@@ -1,0 +1,2106 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>برنامج ساكني مجمع الرويال ستي السكني</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Cairo Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- SheetJS Library for Reading/Writing Excel Files -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Firebase SDK (Realtime Database for Multi-PC Sync) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        body { background-color: #0b0f19; color: #e2e8f0; transition: all 0.3s ease; }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+        .glow-blue { box-shadow: 0 0 20px rgba(37, 99, 235, 0.25); }
+        mark.highlight {
+            background-color: #facc15;
+            color: #000000;
+            padding: 0 4px;
+            border-radius: 4px;
+            font-weight: 800;
+        }
+        input[type="date"] {
+            direction: rtl;
+            text-align: right;
+        }
+
+        /* ثيمات الألوان المختلفة */
+        body.theme-dark { background-color: #0b0f19; color: #e2e8f0; }
+        body.theme-royal { background-color: #0f172a; color: #f1f5f9; }
+        body.theme-royal .glass-panel { background: rgba(30, 41, 59, 0.85); border-color: rgba(59, 130, 246, 0.2); }
+        body.theme-emerald { background-color: #064e3b; color: #ecfdf5; }
+        body.theme-emerald .glass-panel { background: rgba(4, 120, 87, 0.75); border-color: rgba(52, 211, 153, 0.2); }
+        body.theme-emerald header { background-color: #065f46 !important; }
+
+        /* مستويات أحجام الخطوط */
+        body.font-size-sm { font-size: 13px; }
+        body.font-size-md { font-size: 15px; }
+        body.font-size-lg { font-size: 18px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between theme-dark font-size-md" id="appBody">
+
+    <!-- Header -->
+    <header class="glass-panel sticky top-0 z-40 px-4 lg:px-6 py-4 flex flex-col lg:flex-row justify-between items-center gap-4 border-b border-slate-800">
+        <div class="flex items-center space-x-3 space-x-reverse w-full lg:w-auto justify-between lg:justify-start">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="bg-blue-600/20 p-2.5 rounded-xl border border-blue-500/30 text-blue-400 glow-blue">
+                    <i class="fa-solid fa-building-user text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-base lg:text-xl font-bold tracking-wide text-white">برنامج ساكني مجمع الرويال ستي السكني</h1>
+                    <p class="text-xs lg:text-sm font-semibold text-blue-400 mt-0.5">تصميم محمد عبد الكريم العبيدي</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Role Switcher & Backup Actions -->
+        <div class="flex flex-wrap items-center justify-center lg:justify-end gap-2 w-full lg:w-auto">
+            <div id="adminBackupTools" class="hidden flex flex-wrap items-center gap-1.5 border-l border-slate-800 pl-3">
+                <button onclick="openAdminSettingsModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition shadow">
+                    <i class="fa-solid fa-gears"><span>إعدادات المدير</span></i>
+                </button>
+                <button onclick="downloadExcelTemplate()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                    <i class="fa-solid fa-file-excel"><span>نموذج</span></i>
+                </button>
+                <button onclick="triggerExcelImport()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition">
+                    <i class="fa-solid fa-file-import"><span>استيراد</span></i>
+                </button>
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
+
+                <button onclick="exportToExcelFull()" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition shadow">
+                    <i class="fa-solid fa-file-export"><span>تصدير إكسل</span></i>
+                </button>
+
+                <button onclick="exportBackup()" class="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                    <i class="fa-solid fa-download"></i> نسخة
+                </button>
+                <button onclick="triggerJsonImport()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                    <i class="fa-solid fa-upload"></i> استرجاع
+                </button>
+                <input type="file" id="jsonFileInput" accept=".json" class="hidden" onchange="importJsonBackup(event)">
+            </div>
+
+            <div class="bg-slate-900 border border-slate-700/80 rounded-xl p-1.5 flex flex-wrap items-center gap-1.5">
+                <span class="text-[11px] text-slate-400 mr-1 font-semibold hidden sm:inline">نوع الحساب:</span>
+                <span id="activeRoleBadge" class="hidden text-xs bg-slate-800 text-amber-400 px-2 py-1 rounded border border-slate-700 font-bold ml-1"></span>
+                <button id="btnAdminRole" onclick="trySetAdminRole()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-user-gear ml-1"></i> المدير
+                </button>
+                <button id="btnMaintenanceRoleBtn" onclick="trySetMaintenanceRole()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-screwdriver-wrench ml-1"></i> الصيانة
+                </button>
+                <button id="btnServicesRole" onclick="trySetServicesRole()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-hand-holding-hand ml-1"></i> الخدمات
+                </button>
+                <button id="btnViewerRole" onclick="trySetViewerRole()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-slate-800 text-slate-300">
+                    <i class="fa-solid fa-eye ml-1"></i> مشاهد
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-3 lg:px-4 py-6 flex-grow space-y-6">
+
+        <!-- Top Statistics Cards -->
+        <div id="statsContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div id="cardBox1" class="glass-panel px-3 py-3 rounded-xl border border-sky-500/20 flex items-center justify-between">
+                <div>
+                    <h2 id="statCard1Title" class="text-[11px] font-extrabold text-sky-300 leading-tight">إجمالي الساكنين</h2>
+                    <h3 id="statTotalResidents" class="text-lg lg:text-xl font-black text-white mt-1">-</h3>
+                </div>
+                <div id="statCard1Icon" class="bg-sky-500/10 p-2 rounded-xl text-sky-400"><i class="fa-solid fa-users"></i></div>
+            </div>
+
+            <div id="cardBox2" class="glass-panel px-3 py-3 rounded-xl border border-emerald-500/20 flex items-center justify-between">
+                <div>
+                    <h2 id="statCard2Title" class="text-[11px] font-extrabold text-emerald-300 leading-tight">إجمالي المستأجرين</h2>
+                    <h3 id="statTotalTenants" class="text-lg lg:text-xl font-black text-white mt-1">-</h3>
+                </div>
+                <div id="statCard2Icon" class="bg-emerald-500/10 p-2 rounded-xl text-emerald-400"><i class="fa-solid fa-house-user"></i></div>
+            </div>
+
+            <div id="cardBox3" class="glass-panel px-3 py-3 rounded-xl border border-blue-500/20 flex items-center justify-between">
+                <div>
+                    <h2 id="statCard3Title" class="text-[11px] font-bold text-blue-400 leading-tight">إجمالي السيارات</h2>
+                    <h3 id="statTotalCars" class="text-lg lg:text-xl font-black text-white mt-1">-</h3>
+                </div>
+                <div id="statCard3Icon" class="bg-blue-500/10 p-2 rounded-xl text-blue-400"><i class="fa-solid fa-car"></i></div>
+            </div>
+
+            <div id="cardBox4" class="glass-panel px-3 py-3 rounded-xl border border-teal-500/20 flex items-center justify-between">
+                <div>
+                    <h2 id="statCard4Title" class="text-[11px] font-bold text-teal-400 leading-tight">العقود السارية</h2>
+                    <h3 id="statActiveContracts" class="text-lg lg:text-xl font-black text-white mt-1">-</h3>
+                </div>
+                <div id="statCard4Icon" class="bg-teal-500/10 p-2 rounded-xl text-teal-400"><i class="fa-solid fa-file-contract"></i></div>
+            </div>
+
+            <div id="cardBox5" class="glass-panel px-3 py-3 rounded-xl border border-rose-500/20 flex items-center justify-between">
+                <div class="w-full">
+                    <div class="flex justify-between items-center">
+                        <h2 id="statCard5Title" class="text-[11px] font-bold text-rose-400 leading-tight">العقود المفسوخة</h2>
+                        <button id="editManualCanceledBtn" onclick="openManualCanceledModal()" class="hidden text-[10px] bg-rose-900/60 hover:bg-rose-800 text-rose-200 px-1 py-0.5 rounded border border-rose-700 transition" title="تعديل العدد اليدوي"><i class="fa-solid fa-pen"></i></button>
+                    </div>
+                    <h3 id="statCanceledContracts" class="text-lg lg:text-xl font-black text-white mt-1">-</h3>
+                </div>
+                <div id="statCard5Icon" class="bg-rose-500/10 p-2 rounded-xl text-rose-400 mr-1"><i class="fa-solid fa-ban"></i></div>
+            </div>
+
+            <!-- بطاقات الصيانة -->
+            <div id="cardBoxMaintActive" class="glass-panel px-3 py-3 rounded-xl border border-amber-500/20 flex items-center justify-between">
+                <div>
+                    <h2 class="text-[10px] font-black text-amber-300 leading-tight">الوحدات غير منتهية الصيانة</h2>
+                    <h3 id="statMaintActive" class="text-lg lg:text-xl font-black text-white mt-1">-</h3>
+                </div>
+                <div class="bg-amber-500/10 p-2 rounded-xl text-amber-400"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            </div>
+
+            <div id="cardBoxMaintExpired" class="glass-panel px-3 py-3 rounded-xl border border-purple-500/20 flex items-center justify-between">
+                <div>
+                    <h2 class="text-[10px] font-black text-purple-300 leading-tight">الوحدات المنتهية الصيانة</h2>
+                    <h3 id="statMaintExpired" class="text-lg lg:text-xl font-black text-white mt-1">-</h3>
+                </div>
+                <div class="bg-purple-500/10 p-2 rounded-xl text-purple-400"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
+
+        <!-- Categorized Search Controls -->
+        <div class="glass-panel p-4 rounded-xl space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <span class="text-xs font-bold text-blue-400"><i class="fa-solid fa-filter ml-1"></i> خانات البحث المخصصة والفلترة</span>
+                <button onclick="clearSearchInputs()" class="text-xs text-slate-400 hover:text-white transition"><i class="fa-solid fa-rotate-left ml-1"></i> مسح حقول البحث</button>
+            </div>
+            
+            <div id="searchGridContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+                <div class="relative">
+                    <i class="fa-solid fa-building absolute right-3 top-1/2 -translate-y-1/2 text-sky-400 text-xs"></i>
+                    <input type="text" id="searchUnit" oninput="debounceFilter()" disabled placeholder="بحث برقم الوحدة..." class="w-full bg-slate-900/50 text-slate-500 placeholder-slate-500 pl-3 pr-9 py-2.5 rounded-lg border border-slate-800 outline-none text-xs font-medium cursor-not-allowed">
+                </div>
+                <div class="relative" id="searchNameWrapper">
+                    <i class="fa-solid fa-user absolute right-3 top-1/2 -translate-y-1/2 text-indigo-400 text-xs"></i>
+                    <input type="text" id="searchName" oninput="debounceFilter()" disabled placeholder="بحث بالاسم أو رقم العقد..." class="w-full bg-slate-900/50 text-slate-500 placeholder-slate-500 pl-3 pr-9 py-2.5 rounded-lg border border-slate-800 outline-none text-xs font-medium cursor-not-allowed">
+                </div>
+                <div class="relative" id="searchAuthWrapper">
+                    <i class="fa-solid fa-user-check absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 text-xs"></i>
+                    <input type="text" id="searchAuth" oninput="debounceFilter()" disabled placeholder="بحث بالمخولين..." class="w-full bg-slate-900/50 text-slate-500 placeholder-slate-500 pl-3 pr-9 py-2.5 rounded-lg border border-slate-800 outline-none text-xs font-medium cursor-not-allowed">
+                </div>
+                <div class="relative" id="searchPhoneWrapper">
+                    <i class="fa-solid fa-phone absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 text-xs"></i>
+                    <input type="text" id="searchPhone" oninput="debounceFilter()" disabled placeholder="بحث برقم الهاتف..." class="w-full bg-slate-900/50 text-slate-500 placeholder-slate-500 pl-3 pr-9 py-2.5 rounded-lg border border-slate-800 outline-none text-xs font-medium cursor-not-allowed">
+                </div>
+                <div class="relative" id="searchCarWrapper">
+                    <i class="fa-solid fa-car absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 text-xs"></i>
+                    <input type="text" id="searchCar" oninput="debounceFilter()" disabled placeholder="بحث بالسيارة..." class="w-full bg-slate-900/50 text-slate-500 placeholder-slate-500 pl-3 pr-9 py-2.5 rounded-lg border border-slate-800 outline-none text-xs font-medium cursor-not-allowed">
+                </div>
+                <div id="contractStatusFilterWrapper" class="sm:col-span-2 md:col-span-1">
+                    <select id="filterContractStatus" onchange="filterData()" disabled class="w-full bg-slate-900/50 text-slate-500 rounded-lg border border-slate-800 p-2.5 text-xs outline-none cursor-not-allowed">
+                        <option value="all">كل الوحدات / العقود (افتراضي)</option>
+                        <option id="optActiveMaint" value="active_maintenance">الوحدات السكنية الغير منتهية صيانتها</option>
+                        <option id="optExpiredMaint" value="expired_maintenance">الوحدات السكنية المنتهية صيانتها</option>
+                        <option id="optExpiredContract" value="expired">العقود المنتهية تاريخها فقط</option>
+                        <option id="optCanceledContract" value="canceled">العقود المفسوخة فقط</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
+                <div id="batchDeleteBar" class="hidden flex items-center gap-2 bg-rose-950/80 border border-rose-800 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-200">
+                    <span>تم تحديد (<span id="selectedCount">0</span>) وحدة</span>
+                    <button onclick="deleteSelectedUnits()" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 rounded-lg transition"><i class="fa-solid fa-trash-can ml-1"></i> حذف المحدد دفعة واحدة</button>
+                </div>
+                
+                <div class="mr-auto w-full sm:w-auto">
+                    <button id="addNewBtn" onclick="openFormModal()" class="hidden w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-md">
+                        <i class="fa-solid fa-plus text-xs"></i> إضافة وحدة سكنية جديدة
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="glass-panel rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-right border-collapse min-w-[700px]">
+                    <thead>
+                        <tr class="bg-slate-800/90 text-slate-200 text-sm font-extrabold uppercase border-b border-slate-700">
+                            <th id="thSelectHeader" class="p-4 text-center w-12 hidden">
+                                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" class="w-4 h-4 text-blue-600 rounded bg-slate-900 border-slate-700 cursor-pointer">
+                            </th>
+                            <th class="p-4 whitespace-nowrap text-right">رقم الوحدة (عمارة - طابق - شقة)</th>
+                            <th class="p-4 text-base text-blue-400">تفاصيل مالك الوحدة السكنية</th>
+                            <th class="p-4 text-base text-emerald-400">تفاصيل مستأجر الوحدة السكنية وعقد الإيجار</th>
+                            <th class="p-4 text-center whitespace-nowrap">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTable" class="divide-y divide-slate-800 text-base font-medium"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Startup Authentication Modal -->
+    <div id="startupAuthModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 w-full max-w-md rounded-2xl border border-slate-700 p-6 space-y-6 shadow-2xl">
+            <div class="text-center space-y-2">
+                <div class="bg-blue-600/20 text-blue-400 w-14 h-14 rounded-full flex items-center justify-center mx-auto border border-blue-500/30 glow-blue">
+                    <i class="fa-solid fa-shield-halved text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-black text-white">نظام الحماية - مجمع الرويال ستي</h3>
+                <p class="text-xs text-slate-400">يرجى تسجيل الدخول لاختيار الحساب والوصول للبيانات</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1 font-semibold">اختر نوع الحساب *</label>
+                    <select id="loginTypeSelect" onchange="toggleLoginTypeFields()" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500">
+                        <option value="viewer">مشاهد (شفت دوام)</option>
+                        <option value="maintenance">قسم الصيانة</option>
+                        <option value="services">قسم الخدمات</option>
+                        <option value="admin">المدير محمد العبيدي</option>
+                    </select>
+                </div>
+
+                <div id="shiftSelectionContainer">
+                    <label class="text-xs text-slate-400 block mb-1 font-semibold">اختر الشفت *</label>
+                    <select id="startupShiftSelect" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500">
+                        <option value="morning">☀️ الشفت الصباحي</option>
+                        <option value="evening">🌆 الشفت المسائي</option>
+                        <option value="night">🌙 الشفت الليلي</option>
+                    </select>
+                </div>
+
+                <div id="passwordFieldContainer">
+                    <label class="text-xs text-slate-400 block mb-1 font-semibold">كلمة السر *</label>
+                    <input type="password" id="startupPasswordInput" required placeholder="أدخل كلمة السر..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white text-center tracking-widest outline-none focus:border-blue-500">
+                </div>
+
+                <p id="startupPasswordError" class="text-xs text-rose-400 hidden text-center font-bold">كلمة السر غير صحيحة!</p>
+
+                <button onclick="processStartupLogin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-blue-900/40">
+                    <i class="fa-solid fa-right-to-bracket ml-1"></i> تسجيل الدخول وعرض النظام
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div id="loginModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 w-full max-w-md rounded-2xl border border-slate-700 p-6 space-y-4">
+            <div class="text-center space-y-2">
+                <div class="bg-blue-600/20 text-blue-400 w-12 h-12 rounded-full flex items-center justify-center mx-auto border border-blue-500/30">
+                    <i class="fa-solid fa-lock text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">تسجيل الدخول بصلاحية المدير (المدير محمد العبيدي)</h3>
+                <p class="text-xs text-slate-400">أدخل كلمة السر للحساب الإداري</p>
+            </div>
+            <form onsubmit="verifyAdminPassword(event)" class="space-y-4">
+                <input type="password" id="adminPasswordInput" required placeholder="كلمة السر..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white text-center tracking-widest outline-none focus:border-blue-500">
+                <p id="passwordError" class="text-xs text-rose-400 hidden text-center">كلمة السر غير صحيحة!</p>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeModal('loginModal')" class="w-1/2 bg-slate-800 text-slate-300 py-2.5 rounded-xl text-xs font-semibold">إلغاء</button>
+                    <button type="submit" class="w-1/2 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-bold">دخول</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Login Maintenance -->
+    <div id="maintenanceLoginModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 w-full max-w-md rounded-2xl border border-slate-700 p-6 space-y-4">
+            <div class="text-center space-y-2">
+                <div class="bg-amber-600/20 text-amber-400 w-12 h-12 rounded-full flex items-center justify-center mx-auto border border-amber-500/30">
+                    <i class="fa-solid fa-screwdriver-wrench text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">تسجيل الدخول - قسم الصيانة</h3>
+                <p class="text-xs text-slate-400">أدخل كلمة السر الخاصة بقسم الصيانة</p>
+            </div>
+            <form onsubmit="verifyMaintenancePassword(event)" class="space-y-4">
+                <input type="password" id="maintenancePasswordInput" required placeholder="كلمة السر..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white text-center tracking-widest outline-none focus:border-amber-500">
+                <p id="maintenancePasswordError" class="text-xs text-rose-400 hidden text-center">كلمة السر غير صحيحة!</p>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeModal('maintenanceLoginModal')" class="w-1/2 bg-slate-800 text-slate-300 py-2.5 rounded-xl text-xs font-semibold">إلغاء</button>
+                    <button type="submit" class="w-1/2 bg-amber-600 hover:bg-amber-500 text-white py-2.5 rounded-xl text-xs font-bold">دخول مباشر</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Login Services -->
+    <div id="servicesLoginModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 w-full max-w-md rounded-2xl border border-slate-700 p-6 space-y-4">
+            <div class="text-center space-y-2">
+                <div class="bg-indigo-600/20 text-indigo-400 w-12 h-12 rounded-full flex items-center justify-center mx-auto border border-indigo-500/30">
+                    <i class="fa-solid fa-hand-holding-hand text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">تسجيل الدخول - قسم الخدمات</h3>
+                <p class="text-xs text-slate-400">أدخل كلمة السر الخاصة بقسم الخدمات</p>
+            </div>
+            <form onsubmit="verifyServicesPassword(event)" class="space-y-4">
+                <input type="password" id="servicesPasswordInput" required placeholder="كلمة السر..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white text-center tracking-widest outline-none focus:border-indigo-500">
+                <p id="servicesPasswordError" class="text-xs text-rose-400 hidden text-center">كلمة السر غير صحيحة!</p>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeModal('servicesLoginModal')" class="w-1/2 bg-slate-800 text-slate-300 py-2.5 rounded-xl text-xs font-semibold">إلغاء</button>
+                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-xs font-bold">دخول مباشر</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Login Viewer -->
+    <div id="viewerLoginModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 w-full max-w-md rounded-2xl border border-slate-700 p-6 space-y-4">
+            <div class="text-center space-y-2">
+                <div class="bg-emerald-600/20 text-emerald-400 w-12 h-12 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30">
+                    <i class="fa-solid fa-user-clock text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">تسجيل الدخول بصلاحية المشاهد</h3>
+                <p class="text-xs text-slate-400">حدد الشفت وأدخل كلمة السر الخاصة به</p>
+            </div>
+            <form onsubmit="verifyViewerPassword(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1 font-semibold">اختر الشفت *</label>
+                    <select id="viewerShiftSelect" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white outline-none focus:border-emerald-500">
+                        <option value="morning">☀️ الشفت الصباحي</option>
+                        <option value="evening">🌆 الشفت المسائي</option>
+                        <option value="night">🌙 الشفت الليلي</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1 font-semibold">كلمة السر للشفت *</label>
+                    <input type="password" id="viewerPasswordInput" required placeholder="كلمة سر الشفت..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white text-center tracking-widest outline-none focus:border-emerald-500">
+                </div>
+                <p id="viewerPasswordError" class="text-xs text-rose-400 hidden text-center">كلمة السر الخاصة بالشفت غير صحيحة!</p>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeModal('viewerLoginModal')" class="w-1/2 bg-slate-800 text-slate-300 py-2.5 rounded-xl text-xs font-semibold">إلغاء</button>
+                    <button type="submit" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-bold">دخول للمشاهدة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Admin Control Settings (تغيير كلمات السر وصلاحيات المستخدمين والثيمات وحجم الخط) -->
+    <div id="adminSettingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 w-full max-w-2xl rounded-2xl border border-slate-700 p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-gears text-blue-400"></i> إعدادات المدير الشاملة (كلمات السر، الصلاحيات، والتصميم)</h3>
+                <button onclick="closeModal('adminSettingsModal')" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- قسم تغيير الثيمات وأحجام الخطوط -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 space-y-3">
+                    <h4 class="text-xs font-bold text-amber-400"><i class="fa-solid fa-palette ml-1"></i> إعدادات التصميم والخطوط</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs text-slate-300 block mb-1">اختر ثيم ألوان الملف:</label>
+                            <select id="settingThemeSelect" onchange="changeTheme(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                                <option value="theme-dark">الوضع الليلي الداكن (افتراضي)</option>
+                                <option value="theme-royal">الأزرق الملكي الفاخر</option>
+                                <option value="theme-emerald">الأخضر الهادئ</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300 block mb-1">حجم الخط العام في الملف:</label>
+                            <select id="settingFontSizeSelect" onchange="changeFontSize(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                                <option value="font-size-sm">صغير (Compact)</option>
+                                <option value="font-size-md">متوسط (افتراضي)</option>
+                                <option value="font-size-lg">كبير (مريح للنظر)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم تخصيص صلاحيات المستخدمين -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 space-y-3">
+                    <h4 class="text-xs font-bold text-emerald-400"><i class="fa-solid fa-user-shield ml-1"></i> صلاحيات المستخدمين والشفتات</h4>
+                    <p class="text-[11px] text-slate-400">حدد نوع الصلاحية لكل حساب (مشاهدة فقط، أو إضافة وتعديل)</p>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between bg-slate-900/60 p-2.5 rounded-lg border border-slate-700 text-xs">
+                            <span class="text-white font-bold">قسم الصيانة</span>
+                            <select id="perm_maintenance" class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                                <option value="view">مشاهدة وبحث فقط</option>
+                                <option value="full">صلاحية كاملة (إضافة/تعديل/حذف)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-between bg-slate-900/60 p-2.5 rounded-lg border border-slate-700 text-xs">
+                            <span class="text-white font-bold">قسم الخدمات</span>
+                            <select id="perm_services" class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                                <option value="view">مشاهدة وبحث فقط</option>
+                                <option value="full">صلاحية كاملة (إضافة/تعديل/حذف)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-between bg-slate-900/60 p-2.5 rounded-lg border border-slate-700 text-xs">
+                            <span class="text-white font-bold">شفتات الدوام (المشاهد)</span>
+                            <select id="perm_viewer" class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                                <option value="view">مشاهدة وبحث فقط</option>
+                                <option value="full">صلاحية كاملة (إضافة/تعديل/حذف)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم تغيير كلمات السر -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 space-y-3">
+                    <h4 class="text-xs font-bold text-blue-400"><i class="fa-solid fa-key ml-1"></i> تغيير كلمات السر للحسابات</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <label class="text-slate-300 block mb-1">كلمة سر المدير:</label>
+                            <input type="text" id="newPassAdmin" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="text-slate-300 block mb-1">كلمة سر قسم الصيانة:</label>
+                            <input type="text" id="newPassMaintenance" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="text-slate-300 block mb-1">كلمة سر قسم الخدمات:</label>
+                            <input type="text" id="newPassServices" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="text-slate-300 block mb-1">كلمة سر الشفت الصباحي:</label>
+                            <input type="text" id="newPassMorning" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="text-slate-300 block mb-1">كلمة سر الشفت المسائي:</label>
+                            <input type="text" id="newPassEvening" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="text-slate-300 block mb-1">كلمة سر الشفت الليلي:</label>
+                            <input type="text" id="newPassNight" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('adminSettingsModal')" class="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-semibold">إلغاء</button>
+                    <button type="button" onclick="saveAdminSettingsChanges()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold">حفظ واعتماد التغييرات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Manual Canceled Count -->
+    <div id="manualCanceledModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-700 p-6 space-y-4">
+            <div class="text-center space-y-2">
+                <div class="bg-rose-600/20 text-rose-400 w-12 h-12 rounded-full flex items-center justify-center mx-auto border border-rose-500/30">
+                    <i class="fa-solid fa-calculator text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">تعديل عدد العقود المفسوخة اليدوي</h3>
+                <p class="text-xs text-slate-400">أدخل عدد العقود المفسوخة السابقة غير المدرجة</p>
+            </div>
+            <div class="space-y-3">
+                <input type="number" id="manualCanceledInput" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white text-center font-bold outline-none focus:border-rose-500">
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeModal('manualCanceledModal')" class="w-1/2 bg-slate-800 text-slate-300 py-2.5 rounded-xl text-xs font-semibold">إلغاء</button>
+                    <button type="button" onclick="saveManualCanceledCount()" class="w-1/2 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl text-xs font-bold">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form -->
+    <div id="formModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 w-full max-w-4xl rounded-2xl border border-slate-700 overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
+            <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-800/40">
+                <h3 id="formModalTitle" class="text-lg font-bold text-white flex items-center gap-2"></h3>
+                <button onclick="closeModal('formModal')" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="saveUnit(event)" class="p-6 space-y-6 overflow-y-auto">
+                <input type="hidden" id="editUnitId">
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">اسم/رقم العمارة *</label>
+                        <input type="text" id="addBuilding" required placeholder="مثال: R1" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">رقم الطابق *</label>
+                        <input type="text" id="addFloor" required placeholder="مثال: 1" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">رقم الشقة *</label>
+                        <input type="text" id="addApartment" required placeholder="مثال: 5" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                    </div>
+                </div>
+
+                <!-- Owner Section -->
+                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/80 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-xs font-bold text-blue-400"><i class="fa-solid fa-user-tie"></i> تفاصيل مالك الوحدة السكنية</h4>
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                            <input type="checkbox" id="addOwnerIsResident" class="w-4 h-4 text-blue-600 rounded focus:ring-0">
+                            <span class="text-xs text-sky-300 font-semibold">مقيم في الوحدة (يُحسب 1 في الإحصائيات)</span>
+                        </label>
+                    </div>
+                    <input type="text" id="addOwner" required placeholder="اسم المالك الثلاثي *" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-400 block mb-1 font-semibold">تاريخ استلام الوحدة السكنية</label>
+                            <input type="date" id="addHandoverDate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <input type="text" id="addOwnerPhone1" placeholder="هاتف 1" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                        <input type="text" id="addOwnerPhone2" placeholder="هاتف 2" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                        <input type="text" id="addOwnerPhone3" placeholder="هاتف 3" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs text-slate-400 font-semibold">الساكنون مع المالك</label>
+                            <button type="button" onclick="addResidentInputRow('ownerResidentsContainer')" class="text-xs text-blue-400 hover:underline"><i class="fa-solid fa-plus"></i> إضافة ساكن</button>
+                        </div>
+                        <div id="ownerResidentsContainer" class="space-y-2"></div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs text-slate-400">سيارات المالك المسجلة</label>
+                            <button type="button" onclick="addCarInputRow('ownerCarsContainer')" class="text-xs text-blue-400 hover:underline"><i class="fa-solid fa-plus"></i> إضافة سيارة</button>
+                        </div>
+                        <div id="ownerCarsContainer" class="space-y-2"></div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs text-slate-400">المخولون من المالك (تاريخ عمل التخويل وتاريخ الانتهاء)</label>
+                            <button type="button" onclick="addAuthInputRow('ownerAuthContainer')" class="text-xs text-blue-400 hover:underline"><i class="fa-solid fa-plus"></i> إضافة مخول</button>
+                        </div>
+                        <div id="ownerAuthContainer" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <!-- Tenant Section -->
+                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/80 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-xs font-bold text-emerald-400"><i class="fa-solid fa-user"></i> تفاصيل مستأجر الوحدة السكنية وعقد الإيجار</h4>
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="archiveCurrentTenant()" class="bg-amber-600/30 hover:bg-amber-600 text-amber-300 hover:text-white px-3 py-1.5 rounded-lg border border-amber-500/40 text-xs font-bold transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-box-archive"></i> أرشفة المستأجر الحالي (عقد مفسوخ)
+                            </button>
+                            <label class="flex items-center gap-1.5 cursor-pointer bg-rose-950/60 px-3 py-1.5 rounded-lg border border-rose-800/60">
+                                <input type="checkbox" id="addIsCanceled" class="w-4 h-4 text-rose-600 rounded focus:ring-0">
+                                <span class="text-xs text-rose-300 font-semibold">العقد مفسوخ</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                                <input type="checkbox" id="addTenantIsResident" class="w-4 h-4 text-emerald-600 rounded focus:ring-0">
+                                <span class="text-xs text-teal-300 font-semibold">مقيم في الوحدة</span>
+                            </label>
+                        </div>
+                    </div>
+                    <input type="text" id="addTenant" placeholder="اسم المستأجر الجديد (أتركه فارغاً إذا كانت الشقة شاغرة)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <input type="text" id="addTenantPhone1" placeholder="هاتف 1" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                        <input type="text" id="addTenantPhone2" placeholder="هاتف 2" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                        <input type="text" id="addTenantPhone3" placeholder="هاتف 3" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                    </div>
+
+                    <!-- تفاصيل عقد الإيجار ورقم العقد -->
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 bg-slate-900/60 p-3 rounded-lg border border-slate-700">
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">رقم العقد</label>
+                            <input type="text" id="addContractNo" placeholder="مثال: C-2026-101" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">تاريخ بدء العقد</label>
+                            <input type="date" id="addLeaseStart" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">تاريخ انتهاء العقد</label>
+                            <input type="date" id="addLeaseEnd" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">الإيجار الشهري (د.ع)</label>
+                            <input type="text" id="addRentIQD" oninput="formatCurrencyInput(this)" placeholder="مثال: 500,000" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">الإيجار الشهري ($)</label>
+                            <input type="text" id="addRentUSD" oninput="formatCurrencyInput(this)" placeholder="مثال: 400" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs text-slate-400 font-semibold">الساكنون مع المستأجر</label>
+                            <button type="button" onclick="addResidentInputRow('tenantResidentsContainer')" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-plus"></i> إضافة ساكن</button>
+                        </div>
+                        <div id="tenantResidentsContainer" class="space-y-2"></div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs text-slate-400">سيارات المستأجر</label>
+                            <button type="button" onclick="addCarInputRow('tenantCarsContainer')" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-plus"></i> إضافة سيارة</button>
+                        </div>
+                        <div id="tenantCarsContainer" class="space-y-2"></div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs text-slate-400">المخولون من المستأجر (تاريخ عمل التخويل وتاريخ الانتهاء)</label>
+                            <button type="button" onclick="addAuthInputRow('tenantAuthContainer')" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-plus"></i> إضافة مخول</button>
+                        </div>
+                        <div id="tenantAuthContainer" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1">ملاحظات تفصيلية</label>
+                    <input type="text" id="addNotes" placeholder="أي ملاحظات..." class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                </div>
+
+                <div class="pt-2 flex justify-end gap-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('formModal')" class="bg-slate-800 text-slate-300 px-4 py-2 rounded-xl text-xs font-semibold">إلغاء</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-xs font-bold">حفظ البيانات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="detailModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 w-full max-w-4xl rounded-2xl border border-slate-700 overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-800/40">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-address-card text-blue-400"></i> الملف الكامل للوحدة والأرشيف</h3>
+                <button onclick="closeModal('detailModal')" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-6 text-sm overflow-y-auto" id="modalContent"></div>
+            <div class="p-4 border-t border-slate-800 bg-slate-800/20 flex justify-end gap-3">
+                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold"><i class="fa-solid fa-print ml-1"></i> طباعة</button>
+                <button onclick="closeModal('detailModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-semibold">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            databaseURL: "https://royal-1a1ad-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let currentRole = '';
+        let currentRoleDisplayName = ''; 
+        
+        // كلمات السر الافتراضية وصلاحيات المستخدمين الافتراضية
+        let systemConfig = {
+            passwords: {
+                admin: '8815291',
+                maintenance: '321987',
+                services: '123789',
+                morning: '246810',
+                evening: '13579',
+                night: '258456'
+            },
+            permissions: {
+                maintenance: 'view', // 'view' أو 'full'
+                services: 'view',
+                viewer: 'view'
+            },
+            theme: 'theme-dark',
+            fontSize: 'font-size-md'
+        };
+        
+        let manualCanceledCount = Number(localStorage.getItem('royal_manual_canceled') || 0);
+
+        const SHIFT_PASSWORDS = {
+            morning: { key: 'morning', name: '☀️ الشفت الصباحي' },
+            evening: { key: 'evening', name: '🌆 الشفت المسائي' },
+            night: { key: 'night', name: '🌙 الشفت الليلي' }
+        };
+
+        let unitsData = [];
+        let searchTimeout = null;
+
+        const defaultData = [
+            {
+                id: 1,
+                building: "R1",
+                floor: "1",
+                apartment: "5",
+                owner: "أحمد عبد الله الحسيني",
+                handoverDate: "2025-06-01",
+                ownerIsResident: true,
+                ownerPhones: ["07701112233", "", ""],
+                ownerResidents: [{ name: "فاطمة أحمد", relation: "زوجة", phone: "07701112244", isResident: true }],
+                ownerCars: [{ type: "تويوتا كامري", color: "أسود", number: "12345 بغداد" }],
+                ownerAuth: [{ name: "سعد عبد الله", type: "تخويل صيانة", startDate: "2026-01-01", expiryDate: "2026-06-15", carType: "نيسان", carColor: "فضي", carNum: "88776" }],
+                tenant: "حسين علي الشمري",
+                tenantIsResident: true,
+                tenantPhones: ["07709998877", "", ""],
+                contractNo: "RC-9901",
+                leaseStart: "2025-01-01",
+                leaseEnd: "2025-12-31",
+                rentIQD: "600,000",
+                rentUSD: "450",
+                isCanceled: false,
+                tenantResidents: [],
+                tenantCars: [],
+                tenantAuth: [],
+                archiveCanceledTenants: [],
+                notes: "وحدة تجريبية"
+            }
+        ];
+
+        // جلب الإعدادات والبيانات من السيرفر أو الذاكرة
+        let localCache = localStorage.getItem('royal_units_cache');
+        if (localCache) {
+            try {
+                unitsData = JSON.parse(localCache);
+                sortUnitsData();
+                updateGlobalStatistics();
+            } catch(e) {}
+        }
+
+        // جلب الإعدادات العامة (كلمات السر والصلاحيات والتصميم) من Firebase
+        db.ref('systemConfig').once('value', (snapshot) => {
+            const config = snapshot.val();
+            if (config) {
+                systemConfig = config;
+            }
+            applySystemThemeAndFont();
+        });
+
+        db.ref('systemConfig').on('child_changed', () => {
+            db.ref('systemConfig').once('value', (snap) => {
+                const config = snap.val();
+                if (config) {
+                    systemConfig = config;
+                    applySystemThemeAndFont();
+                }
+            });
+        });
+
+        db.ref('units').once('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                unitsData = Array.isArray(data) ? data : Object.values(data);
+                sortUnitsData();
+                localStorage.setItem('royal_units_cache', JSON.stringify(unitsData));
+            } else if (!localCache) {
+                unitsData = defaultData;
+                sortUnitsData();
+                db.ref('units').set(defaultData);
+            }
+            if (currentRole) {
+                filterData();
+            }
+            updateGlobalStatistics();
+        });
+
+        db.ref('units').on('child_changed', () => {
+            db.ref('units').once('value', (snap) => {
+                const freshData = snap.val();
+                if (freshData) {
+                    unitsData = Array.isArray(freshData) ? freshData : Object.values(freshData);
+                    sortUnitsData();
+                    localStorage.setItem('royal_units_cache', JSON.stringify(unitsData));
+                    if (currentRole) filterData();
+                }
+            });
+        });
+
+        function applySystemThemeAndFont() {
+            const body = document.getElementById('appBody');
+            body.className = `min-h-screen flex flex-col justify-between ${systemConfig.theme || 'theme-dark'} ${systemConfig.fontSize || 'font-size-md'}`;
+        }
+
+        function changeTheme(themeName) {
+            systemConfig.theme = themeName;
+            applySystemThemeAndFont();
+        }
+
+        function changeFontSize(sizeName) {
+            systemConfig.fontSize = sizeName;
+            applySystemThemeAndFont();
+        }
+
+        function openAdminSettingsModal() {
+            if (currentRole !== 'admin') return;
+            document.getElementById('settingThemeSelect').value = systemConfig.theme || 'theme-dark';
+            document.getElementById('settingFontSizeSelect').value = systemConfig.fontSize || 'font-size-md';
+
+            document.getElementById('perm_maintenance').value = systemConfig.permissions?.maintenance || 'view';
+            document.getElementById('perm_services').value = systemConfig.permissions?.services || 'view';
+            document.getElementById('perm_viewer').value = systemConfig.permissions?.viewer || 'view';
+
+            document.getElementById('newPassAdmin').value = systemConfig.passwords?.admin || '';
+            document.getElementById('newPassMaintenance').value = systemConfig.passwords?.maintenance || '';
+            document.getElementById('newPassServices').value = systemConfig.passwords?.services || '';
+            document.getElementById('newPassMorning').value = systemConfig.passwords?.morning || '';
+            document.getElementById('newPassEvening').value = systemConfig.passwords?.evening || '';
+            document.getElementById('newPassNight').value = systemConfig.passwords?.night || '';
+
+            document.getElementById('adminSettingsModal').classList.remove('hidden');
+        }
+
+        function saveAdminSettingsChanges() {
+            systemConfig.passwords = {
+                admin: document.getElementById('newPassAdmin').value,
+                maintenance: document.getElementById('newPassMaintenance').value,
+                services: document.getElementById('newPassServices').value,
+                morning: document.getElementById('newPassMorning').value,
+                evening: document.getElementById('newPassEvening').value,
+                night: document.getElementById('newPassNight').value
+            };
+
+            systemConfig.permissions = {
+                maintenance: document.getElementById('perm_maintenance').value,
+                services: document.getElementById('perm_services').value,
+                viewer: document.getElementById('perm_viewer').value
+            };
+
+            db.ref('systemConfig').set(systemConfig);
+            closeModal('adminSettingsModal');
+            alert("تم حفظ إعدادات المدير، وتحديث كلمات السر والصلاحيات والتصميم بنجاح وتطبيقها على كافة الأجهزة!");
+            filterData();
+        }
+
+        function sortUnitsData() {
+            unitsData.sort((a, b) => {
+                let bA = String(a.building || '').trim();
+                let bB = String(b.building || '').trim();
+                if (bA !== bB) return bA.localeCompare(bB, 'en', {numeric: true});
+
+                let fA = Number(a.floor) || 0;
+                let fB = Number(b.floor) || 0;
+                if (fA !== fB) return fA - fB;
+
+                let aA = Number(a.apartment) || 0;
+                let aB = Number(b.apartment) || 0;
+                return aA - aB;
+            });
+        }
+
+        function formatDateToRightLeft(dateStr) {
+            if (!dateStr) return '-';
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            return dateStr;
+        }
+
+        function formatCurrencyInput(input) {
+            let val = input.value.replace(/[^\d]/g, '');
+            if (val) {
+                input.value = Number(val).toLocaleString('en-US');
+            } else {
+                input.value = '';
+            }
+        }
+
+        function toggleLoginTypeFields() {
+            const type = document.getElementById('loginTypeSelect').value;
+            const shiftContainer = document.getElementById('shiftSelectionContainer');
+
+            if (type === 'viewer') {
+                shiftContainer.style.display = 'block';
+            } else {
+                shiftContainer.style.display = 'none';
+            }
+        }
+
+        function processStartupLogin() {
+            const type = document.getElementById('loginTypeSelect').value;
+            const passInput = document.getElementById('startupPasswordInput').value;
+            const errorEl = document.getElementById('startupPasswordError');
+            errorEl.classList.add('hidden');
+
+            const passwords = systemConfig.passwords || {
+                admin: '8815291',
+                maintenance: '321987',
+                services: '123789',
+                morning: '246810',
+                evening: '13579',
+                night: '258456'
+            };
+
+            if (type === 'maintenance') {
+                if (passInput === passwords.maintenance) {
+                    document.getElementById('startupAuthModal').classList.add('hidden');
+                    switchRole('maintenance', 'قسم الصيانة');
+                } else { errorEl.classList.remove('hidden'); }
+            } else if (type === 'services') {
+                if (passInput === passwords.services) {
+                    document.getElementById('startupAuthModal').classList.add('hidden');
+                    switchRole('services', 'قسم الخدمات');
+                } else { errorEl.classList.remove('hidden'); }
+            } else if (type === 'admin') {
+                if (passInput === passwords.admin) {
+                    document.getElementById('startupAuthModal').classList.add('hidden');
+                    switchRole('admin', 'المدير محمد العبيدي');
+                } else { errorEl.classList.remove('hidden'); }
+            } else {
+                const shiftKey = document.getElementById('startupShiftSelect').value;
+                const targetPass = passwords[shiftKey] || SHIFT_PASSWORDS[shiftKey]?.pass;
+                const shiftNameObj = SHIFT_PASSWORDS[shiftKey];
+                if (passInput === targetPass) {
+                    document.getElementById('startupAuthModal').classList.add('hidden');
+                    switchRole('viewer', shiftNameObj ? shiftNameObj.name : 'مشاهد');
+                } else { errorEl.classList.remove('hidden'); }
+            }
+        }
+
+        function isContractExpired(leaseEndStr) {
+            if (!leaseEndStr) return false;
+            const today = new Date().toISOString().slice(0, 10);
+            return leaseEndStr < today;
+        }
+
+        function getMaintenanceStatusInfo(handoverDateStr) {
+            if (!handoverDateStr) return { status: 'active', mainText: "أن الصيانة غير منتهية", subText: "لم يتم تحديد تاريخ الاستلام", color: "text-white" };
+            
+            const handoverDate = new Date(handoverDateStr);
+            if (isNaN(handoverDate.getTime())) return { status: 'active', mainText: "أن الصيانة غير منتهية", subText: "تاريخ غير صالح", color: "text-white" };
+
+            const oneYearLater = new Date(handoverDate);
+            oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            const diffTime = oneYearLater.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays >= 0) {
+                return {
+                    status: 'active',
+                    mainText: "أن الصيانة غير منتهية",
+                    subText: `عدد الأيام المتبقية للصيانة المجانية: ${diffDays} يوم`,
+                    color: "text-white"
+                };
+            } else {
+                const exceededDays = Math.abs(diffDays);
+                return {
+                    status: 'expired',
+                    mainText: "الصيانة منتهية",
+                    subText: `عدد الأيام التي تجاوزت السنة: ${exceededDays} يوم`,
+                    color: "text-rose-400 font-bold"
+                };
+            }
+        }
+
+        function highlightText(text, query) {
+            if (!text || !query) return text;
+            text = String(text);
+            const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+            return text.replace(regex, '<mark class="highlight">$1</mark>');
+        }
+
+        function saveToStorage() {
+            sortUnitsData();
+            localStorage.setItem('royal_units_cache', JSON.stringify(unitsData));
+            db.ref('units').set(unitsData);
+        }
+
+        // فحص ما إذا كان الحساب يمتلك صلاحية التعديل والإضافة بناءً على إعدادات المدير
+        function hasFullPermission() {
+            if (currentRole === 'admin') return true;
+            const perms = systemConfig.permissions || {};
+            if (currentRole === 'maintenance' && perms.maintenance === 'full') return true;
+            if (currentRole === 'services' && perms.services === 'full') return true;
+            if (currentRole === 'viewer' && perms.viewer === 'full') return true;
+            return false;
+        }
+
+        function updateGlobalStatistics() {
+            let totalResidents = 0;
+            let totalTenants = 0;
+            let totalCars = 0;
+            let activeContractsCount = 0;
+            let canceledContractsCount = manualCanceledCount;
+            let maintenanceActiveCount = 0;
+            let maintenanceExpiredCount = 0;
+
+            unitsData.forEach(item => {
+                if (item.ownerIsResident) totalResidents += 1;
+                
+                if (item.tenant && item.tenant.trim()) {
+                    totalTenants += 1;
+                    if (item.tenantIsResident) totalResidents += 1;
+
+                    if (item.isCanceled) {
+                        canceledContractsCount += 1;
+                    } else {
+                        activeContractsCount += 1;
+                    }
+                }
+
+                if (item.archiveCanceledTenants && item.archiveCanceledTenants.length > 0) {
+                    canceledContractsCount += item.archiveCanceledTenants.length;
+                    totalTenants += item.archiveCanceledTenants.length;
+                }
+
+                (item.ownerResidents || []).forEach(r => { if (r.isResident) totalResidents += 1; });
+                (item.tenantResidents || []).forEach(r => { if (r.isResident) totalResidents += 1; });
+                totalCars += (item.ownerCars || []).length;
+                totalCars += (item.tenantCars || []).length;
+
+                const maint = getMaintenanceStatusInfo(item.handoverDate);
+                if (maint.status === 'active') maintenanceActiveCount++;
+                else if (maint.status === 'expired') maintenanceExpiredCount++;
+            });
+
+            document.getElementById('statTotalResidents').innerText = totalResidents;
+            document.getElementById('statTotalTenants').innerText = totalTenants;
+            document.getElementById('statTotalCars').innerText = totalCars;
+            document.getElementById('statActiveContracts').innerText = activeContractsCount;
+            document.getElementById('statCanceledContracts').innerText = canceledContractsCount;
+            document.getElementById('statMaintActive').innerText = maintenanceActiveCount;
+            document.getElementById('statMaintExpired').innerText = maintenanceExpiredCount;
+
+            if (currentRole === 'maintenance') {
+                document.getElementById('statCard1Title').innerText = "إجمالي الوحدات الغير منتهية صيانتها";
+                document.getElementById('statCard2Title').innerText = "إجمالي الوحدات المنتهية صيانتها";
+                document.getElementById('statTotalResidents').innerText = maintenanceActiveCount;
+                document.getElementById('statTotalTenants').innerText = maintenanceExpiredCount;
+
+                document.getElementById('cardBox3').style.display = 'none';
+                document.getElementById('cardBox4').style.display = 'none';
+                document.getElementById('cardBox5').style.display = 'none';
+                document.getElementById('cardBoxMaintActive').style.display = 'none';
+                document.getElementById('cardBoxMaintExpired').style.display = 'none';
+                document.getElementById('statsContainer').className = "grid grid-cols-2 gap-3";
+            } else if (currentRole === 'viewer') {
+                document.getElementById('statCard1Title').innerText = "إجمالي الساكنين";
+                document.getElementById('statCard2Title').innerText = "إجمالي المستأجرين";
+                document.getElementById('cardBox3').style.display = 'flex';
+                document.getElementById('cardBox4').style.display = 'none';
+                document.getElementById('cardBox5').style.display = 'none';
+                document.getElementById('cardBoxMaintActive').style.display = 'none';
+                document.getElementById('cardBoxMaintExpired').style.display = 'none';
+                document.getElementById('statsContainer').className = "grid grid-cols-3 gap-3";
+            } else {
+                document.getElementById('statCard1Title').innerText = "إجمالي الساكنين";
+                document.getElementById('statCard2Title').innerText = "إجمالي المستأجرين";
+                document.getElementById('cardBox3').style.display = 'flex';
+                document.getElementById('cardBox4').style.display = 'flex';
+                document.getElementById('cardBox5').style.display = 'flex';
+                document.getElementById('cardBoxMaintActive').style.display = 'flex';
+                document.getElementById('cardBoxMaintExpired').style.display = 'flex';
+                document.getElementById('statsContainer').className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3";
+            }
+        }
+
+        function openManualCanceledModal() {
+            if (currentRole !== 'admin') return;
+            document.getElementById('manualCanceledInput').value = manualCanceledCount;
+            document.getElementById('manualCanceledModal').classList.remove('hidden');
+        }
+
+        function saveManualCanceledCount() {
+            const val = Number(document.getElementById('manualCanceledInput').value);
+            manualCanceledCount = val >= 0 ? val : 0;
+            localStorage.setItem('royal_manual_canceled', manualCanceledCount);
+            closeModal('manualCanceledModal');
+            updateGlobalStatistics();
+            alert("تم تحديث عدد العقود المفسوخة اليدوي بنجاح!");
+        }
+
+        function switchRole(role, displayName) {
+            currentRole = role;
+            currentRoleDisplayName = displayName;
+
+            document.getElementById('btnAdminRole').className = role === 'admin' ? "px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-blue-600 text-white" : "px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white";
+            const maintBtn = document.getElementById('btnMaintenanceRoleBtn');
+            if(maintBtn) maintBtn.className = role === 'maintenance' ? "px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-amber-600 text-white" : "px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white";
+            document.getElementById('btnServicesRole').className = role === 'services' ? "px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-indigo-600 text-white" : "px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white";
+            document.getElementById('btnViewerRole').className = role === 'viewer' ? "px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-blue-600 text-white" : "px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white";
+            
+            const badge = document.getElementById('activeRoleBadge');
+            if (displayName) {
+                badge.innerText = displayName;
+                badge.classList.remove('hidden');
+            } else { badge.classList.add('hidden'); }
+
+            ['searchUnit', 'searchName', 'searchAuth', 'searchPhone', 'searchCar', 'filterContractStatus'].forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.disabled = false;
+                    input.classList.remove('bg-slate-900/50', 'text-slate-500', 'cursor-not-allowed');
+                    input.classList.add('bg-slate-900', 'text-white');
+                }
+            });
+
+            const optActiveMaint = document.getElementById('optActiveMaint');
+            const optExpiredMaint = document.getElementById('optExpiredMaint');
+            const optExpiredContract = document.getElementById('optExpiredContract');
+            const optCanceledContract = document.getElementById('optCanceledContract');
+
+            if (role === 'maintenance') {
+                if(optActiveMaint) optActiveMaint.style.display = 'block';
+                if(optExpiredMaint) optExpiredMaint.style.display = 'block';
+                if(optExpiredContract) optExpiredContract.style.display = 'none';
+                if(optCanceledContract) optCanceledContract.style.display = 'none';
+
+                document.getElementById('searchAuthWrapper').style.display = 'none';
+                document.getElementById('searchPhoneWrapper').style.display = 'none';
+                document.getElementById('searchCarWrapper').style.display = 'none';
+                document.getElementById('searchGridContainer').className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3";
+            } else if (role === 'services') {
+                if(optActiveMaint) optActiveMaint.style.display = 'none';
+                if(optExpiredMaint) optExpiredMaint.style.display = 'none';
+                if(optExpiredContract) optExpiredContract.style.display = 'block';
+                if(optCanceledContract) optCanceledContract.style.display = 'block';
+
+                document.getElementById('searchAuthWrapper').style.display = 'block';
+                document.getElementById('searchPhoneWrapper').style.display = 'block';
+                document.getElementById('searchCarWrapper').style.display = 'block';
+                document.getElementById('searchGridContainer').className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3";
+            } else {
+                if(optActiveMaint) optActiveMaint.style.display = 'block';
+                if(optExpiredMaint) optExpiredMaint.style.display = 'block';
+                if(optExpiredContract) optExpiredContract.style.display = 'block';
+                if(optCanceledContract) optCanceledContract.style.display = 'block';
+
+                document.getElementById('searchAuthWrapper').style.display = 'block';
+                document.getElementById('searchPhoneWrapper').style.display = 'block';
+                document.getElementById('searchCarWrapper').style.display = 'block';
+
+                const statusFilterWrapper = document.getElementById('contractStatusFilterWrapper');
+                const searchGrid = document.getElementById('searchGridContainer');
+                if (role === 'viewer') {
+                    statusFilterWrapper.classList.add('hidden');
+                    searchGrid.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3";
+                } else {
+                    statusFilterWrapper.classList.remove('hidden');
+                    searchGrid.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3";
+                }
+            }
+
+            const canEdit = hasFullPermission();
+            document.getElementById('thSelectHeader').classList.toggle('hidden', !canEdit);
+            document.getElementById('addNewBtn').classList.toggle('hidden', !canEdit);
+            document.getElementById('adminBackupTools').classList.toggle('hidden', role !== 'admin');
+            const editManualBtn = document.getElementById('editManualCanceledBtn');
+            if(editManualBtn) editManualBtn.classList.toggle('hidden', role !== 'admin');
+            
+            filterData();
+        }
+
+        function clearSearchInputs() {
+            ['searchUnit', 'searchName', 'searchAuth', 'searchPhone', 'searchCar'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const filterEl = document.getElementById('filterContractStatus');
+            if (filterEl) filterEl.value = 'all';
+            filterData();
+        }
+
+        function debounceFilter() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                filterData();
+            }, 150);
+        }
+
+        function filterData() {
+            if (!currentRole) return;
+            updateGlobalStatistics();
+
+            const qUnit = document.getElementById('searchUnit').value.trim().toLowerCase();
+            const qName = document.getElementById('searchName') ? document.getElementById('searchName').value.trim().toLowerCase() : '';
+            const qAuth = document.getElementById('searchAuth').value.trim().toLowerCase();
+            const qPhone = document.getElementById('searchPhone').value.trim().toLowerCase();
+            const qCar = document.getElementById('searchCar').value.trim().toLowerCase();
+            
+            const contractFilterEl = document.getElementById('filterContractStatus');
+            const contractFilter = (currentRole !== 'viewer' && contractFilterEl) ? contractFilterEl.value : 'all';
+
+            const filtered = unitsData.filter(item => {
+                const b = String(item.building || '').toLowerCase();
+                const f = String(item.floor || '').toLowerCase();
+                const a = String(item.apartment || '').toLowerCase();
+                const unitCode = `${b}-${f}-${a}`;
+                const altCode = `-${a}`;
+
+                if (qUnit && !unitCode.includes(qUnit) && !altCode.includes(qUnit) && !b.includes(qUnit)) return false;
+
+                const maintStatus = getMaintenanceStatusInfo(item.handoverDate).status;
+                if (contractFilter === 'active_maintenance') {
+                    if (maintStatus !== 'active') return false;
+                } else if (contractFilter === 'expired_maintenance') {
+                    if (maintStatus !== 'expired') return false;
+                } else if (contractFilter === 'expired') {
+                    if (!isContractExpired(item.leaseEnd) || item.isCanceled) return false;
+                } else if (contractFilter === 'canceled') {
+                    if (!item.isCanceled && (!item.archiveCanceledTenants || item.archiveCanceledTenants.length === 0)) return false;
+                }
+
+                if (qName) {
+                    const ownerName = String(item.owner || '').toLowerCase();
+                    const tenantName = String(item.tenant || '').toLowerCase();
+                    const contractNoStr = String(item.contractNo || '').toLowerCase();
+                    const ownerResNames = (item.ownerResidents || []).map(r => String(r.name || '').toLowerCase()).join(' ');
+                    const tenantResNames = (item.tenantResidents || []).map(r => String(r.name || '').toLowerCase()).join(' ');
+                    const archiveNames = (item.archiveCanceledTenants || []).map(ar => `${ar.tenant} ${ar.contractNo || ''}`).join(' ').toLowerCase();
+
+                    const allNames = `${ownerName} ${tenantName} ${contractNoStr} ${ownerResNames} ${tenantResNames} ${archiveNames}`;
+                    if (!allNames.includes(qName)) return false;
+                }
+
+                if (qAuth && currentRole !== 'services' && currentRole !== 'maintenance') {
+                    const allAuths = [...(item.ownerAuth || []), ...(item.tenantAuth || [])];
+                    const matchAuth = allAuths.some(auth => 
+                        String(auth.name || '').toLowerCase().includes(qAuth) || 
+                        String(auth.type || '').toLowerCase().includes(qAuth) ||
+                        String(auth.startDate || '').toLowerCase().includes(qAuth) ||
+                        String(auth.expiryDate || '').toLowerCase().includes(qAuth)
+                    );
+                    if (!matchAuth) return false;
+                }
+
+                if (qPhone && currentRole !== 'maintenance') {
+                    const allPhones = [
+                        ...(item.ownerPhones || []), 
+                        ...(item.tenantPhones || []),
+                        ...(item.ownerResidents || []).map(r => r.phone),
+                        ...(item.tenantResidents || []).map(r => r.phone),
+                        ...(item.archiveCanceledTenants || []).map(ar => ar.phones || [])
+                    ].flat().join(' ');
+                    if (!allPhones.includes(qPhone)) return false;
+                }
+
+                if (qCar && currentRole !== 'services' && currentRole !== 'maintenance') {
+                    const allCars = [
+                        ...(item.ownerCars || []).map(c => `${c.type} ${c.color} ${c.number}`),
+                        ...(item.tenantCars || []).map(c => `${c.type} ${c.color} ${c.number}`),
+                        ...(item.ownerAuth || []).map(a => `${a.carType} ${a.carColor} ${a.carNum}`),
+                        ...(item.tenantAuth || []).map(a => `${a.carType} ${a.carColor} ${a.carNum}`)
+                    ].join(' ').toLowerCase();
+                    if (!allCars.includes(qCar)) return false;
+                }
+
+                return true;
+            });
+
+            renderData(filtered, { qUnit, qName, qAuth, qPhone, qCar });
+        }
+
+        function renderSubDetails(residents = [], cars = [], auths = [], queries = {}) {
+            let html = '';
+
+            if (currentRole === 'services' || currentRole === 'maintenance') {
+                return '';
+            }
+
+            if (residents && residents.length > 0) {
+                html += `<div class="mt-2 space-y-1">
+                    <span class="text-[11px] text-sky-400 font-extrabold flex items-center gap-1"><i class="fa-solid fa-users text-[10px]"></i> الساكنون المرافقون:</span>`;
+                residents.forEach(r => {
+                    html += `<div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/70 text-xs text-slate-200">
+                        <b>${highlightText(r.name, queries.qName)}</b> (${r.relation || 'قريب'}) 
+                        ${r.phone ? `| هاتف: <span class="font-mono text-emerald-400 font-bold">${highlightText(r.phone, queries.qPhone)}</span>` : ''} 
+                        ${r.isResident ? '<span class="text-sky-300 mr-1 font-bold">[مقيم]</span>' : ''}
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
+            if (cars && cars.length > 0) {
+                html += `<div class="mt-2 space-y-1">
+                    <span class="text-[11px] text-blue-400 font-extrabold flex items-center gap-1"><i class="fa-solid fa-car text-[10px]"></i> السيارات المسجلة:</span>`;
+                cars.forEach(c => {
+                    let carStr = `${c.type || ''} ${c.color || ''} [${c.number || ''}]`;
+                    html += `<div class="bg-slate-900/80 p-2 rounded-lg border border-blue-900/40 text-xs text-slate-200 font-semibold">
+                        ${highlightText(carStr, queries.qCar)}
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
+            if (auths && auths.length > 0) {
+                html += `<div class="mt-2 space-y-1.5">
+                    <span class="text-[11px] text-amber-400 font-extrabold flex items-center gap-1"><i class="fa-solid fa-user-check text-[10px]"></i> المخولون الرسميون:</span>`;
+                auths.forEach(auth => {
+                    let sDate = formatDateToRightLeft(auth.startDate);
+                    let eDate = formatDateToRightLeft(auth.expiryDate);
+                    html += `<div class="bg-slate-900/90 p-2.5 rounded-lg border border-amber-500/40 text-xs text-slate-200 space-y-1">
+                        <div><i class="fa-solid fa-user-shield text-amber-400 ml-1"></i><b>المخول:</b> ${highlightText(auth.name, queries.qAuth)} <span class="text-slate-400">(${highlightText(auth.type || 'عام', queries.qAuth)})</span></div>
+                        ${auth.startDate || auth.expiryDate ? `<div class="text-[11px] text-slate-300"><b>الفترة:</b> من <span class="text-sky-300">${highlightText(sDate, queries.qAuth)}</span> إلى <span class="text-amber-300">${highlightText(eDate, queries.qAuth)}</span></div>` : ''}
+                        ${auth.carType || auth.carNum ? `<div class="text-[11px] text-blue-300"><b>سيارة المخول:</b> ${highlightText(auth.carType || '', queries.qCar)} - ${highlightText(auth.carColor || '', queries.qCar)} [لوحة: ${highlightText(auth.carNum || '', queries.qCar)}]</div>` : ''}
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
+            return html;
+        }
+
+        function renderData(data, queries = {}) {
+            const tbody = document.getElementById('dataTable');
+            tbody.innerHTML = '';
+            
+            const canEdit = hasFullPermission();
+
+            if (!data || data.length === 0) {
+                let colSpanCount = canEdit ? 5 : 4;
+                tbody.innerHTML = `<tr><td colspan="${colSpanCount}" class="text-center py-8 text-slate-500 text-base">لا توجد سجلات مطابقة لعملية البحث.</td></tr>`;
+                const masterCb = document.getElementById('selectAllCheckbox');
+                if (masterCb) masterCb.checked = false;
+                toggleBatchDeleteBar();
+                return;
+            }
+
+            let rowsHtml = '';
+            data.forEach((item) => {
+                let unitStr = `${item.building}-${item.floor}-${item.apartment}`;
+                let ownerPhonesStr = (item.ownerPhones || []).filter(Boolean).join(' - ');
+                
+                let ownerDetailsHtml = renderSubDetails(item.ownerResidents, item.ownerCars, item.ownerAuth, queries);
+
+                let maintenanceInfoHtml = '';
+                if (currentRole === 'admin' || currentRole === 'maintenance') {
+                    const maint = getMaintenanceStatusInfo(item.handoverDate);
+                    maintenanceInfoHtml = `
+                        <div class="mt-2 bg-slate-900/80 p-2.5 rounded-lg border border-slate-700 space-y-0.5 text-xs">
+                            <div class="text-slate-400">تاريخ الاستلام: <span class="text-sky-300 font-mono font-bold">${formatDateToRightLeft(item.handoverDate)}</span></div>
+                            <div class="${maint.color} font-bold text-xs">${maint.mainText}</div>
+                            <div class="text-slate-300 text-[11px]">${maint.subText}</div>
+                        </div>
+                    `;
+                }
+
+                let ownerSectionContent = `
+                    <div class="flex flex-col gap-2">
+                        <span class="text-white font-extrabold text-base"><i class="fa-solid fa-user-tie text-blue-400 ml-1"></i>${highlightText(item.owner, queries.qName)} ${item.ownerIsResident ? '<span class="text-xs text-sky-300 font-normal">[مقيم]</span>' : ''}</span>
+                        ${ownerPhonesStr ? `<div class="text-amber-400 font-mono text-xs font-bold dir-ltr text-right bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800 w-fit">${highlightText(ownerPhonesStr, queries.qPhone)}</div>` : ''}
+                        ${maintenanceInfoHtml}
+                        ${ownerDetailsHtml}
+                    </div>
+                `;
+
+                let hasTenant = item.tenant && item.tenant.trim() !== "";
+                let tenantContent = "";
+
+                if (hasTenant) {
+                    let tenantPhonesStr = (item.tenantPhones || []).filter(Boolean).join(' - ');
+                    let tenantDetailsHtml = renderSubDetails(item.tenantResidents, item.tenantCars, item.tenantAuth, queries);
+
+                    const expired = isContractExpired(item.leaseEnd);
+                    let contractBadge = '';
+                    let leaseBoxClass = 'bg-emerald-950/40 border-emerald-800/40 text-emerald-300';
+
+                    if (item.isCanceled) {
+                        contractBadge = `<span class="bg-rose-600 text-white px-2 py-0.5 rounded text-[10px] font-bold mr-2"><i class="fa-solid fa-ban ml-1"></i> عقد مفسوخ</span>`;
+                        leaseBoxClass = 'bg-rose-950/40 border-rose-800/60 text-rose-300';
+                    } else if (expired) {
+                        contractBadge = `<span class="bg-amber-600 text-white px-2 py-0.5 rounded text-[10px] font-bold mr-2"><i class="fa-solid fa-triangle-exclamation ml-1"></i> منتهي التاريخ</span>`;
+                        leaseBoxClass = 'bg-amber-950/40 border-amber-800/60 text-amber-300';
+                    }
+
+                    let leaseInfo = "";
+                    if (currentRole !== 'viewer' && currentRole !== 'maintenance') {
+                        let contractNoDisplay = item.contractNo ? `<div><b>رقم العقد:</b> <span class="font-mono font-bold text-white">${highlightText(item.contractNo, queries.qName)}</span></div>` : '';
+                        
+                        let rentDisplay = "";
+                        if (currentRole === 'admin' || currentRole === 'services') {
+                            rentDisplay = (item.rentIQD || item.rentUSD) ? `<div><b>الإيجار:</b> ${item.rentIQD ? item.rentIQD + ' د.ع' : ''} ${item.rentUSD ? ' / ' + item.rentUSD + ' $' : ''}</div>` : '';
+                        }
+
+                        let lStart = formatDateToRightLeft(item.leaseStart);
+                        let lEnd = formatDateToRightLeft(item.leaseEnd);
+
+                        if (item.contractNo || item.leaseStart || item.leaseEnd || item.rentIQD || item.rentUSD) {
+                            leaseInfo = `
+                                <div class="mt-2 ${leaseBoxClass} p-2 rounded border text-[11px] space-y-0.5">
+                                    <div class="flex items-center justify-between">
+                                        <span><b>تاريخ العقد:</b> من (${lStart || '-'}) إلى (${lEnd || '-'})</span>
+                                        ${contractBadge}
+                                    </div>
+                                    ${contractNoDisplay}
+                                    ${rentDisplay}
+                                </div>
+                            `;
+                        }
+                    }
+
+                    let prevCanceledNotice = '';
+                    if (currentRole !== 'viewer' && currentRole !== 'maintenance' && item.archiveCanceledTenants && item.archiveCanceledTenants.length > 0) {
+                        prevCanceledNotice = `<div class="text-[11px] text-rose-400 bg-rose-950/30 px-2 py-1 rounded border border-rose-900/40 flex items-center gap-1"><i class="fa-solid fa-clock-rotate-left"></i> تنبيه: توجد عقود مفسوخة سابقة لهذه الشقة (اضغط عرض لرؤيتها)</div>`;
+                    }
+
+                    if (currentRole === 'maintenance') {
+                        tenantContent = `
+                            <div class="flex flex-col gap-2">
+                                <span class="text-white font-extrabold text-base"><i class="fa-solid fa-user text-emerald-400 ml-1"></i>${highlightText(item.tenant, queries.qName)} ${item.tenantIsResident ? '<span class="text-xs text-teal-300 font-normal">[مقيم]</span>' : ''}</span>
+                                ${tenantPhonesStr ? `<div class="text-emerald-300 font-mono text-xs font-bold dir-ltr text-right bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800 w-fit">${highlightText(tenantPhonesStr, queries.qPhone)}</div>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        tenantContent = `
+                            <div class="flex flex-col gap-2">
+                                <span class="text-white font-extrabold text-base"><i class="fa-solid fa-user text-emerald-400 ml-1"></i>${highlightText(item.tenant, queries.qName)} ${item.tenantIsResident ? '<span class="text-xs text-teal-300 font-normal">[مقيم]</span>' : ''}</span>
+                                ${tenantPhonesStr ? `<div class="text-emerald-300 font-mono text-xs font-bold dir-ltr text-right bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800 w-fit">${highlightText(tenantPhonesStr, queries.qPhone)}</div>` : ''}
+                                ${leaseInfo}
+                                ${prevCanceledNotice}
+                                ${tenantDetailsHtml}
+                            </div>
+                        `;
+                    }
+                } else {
+                    let prevCanceledNoticeEmpty = '';
+                    if (currentRole !== 'viewer' && currentRole !== 'maintenance' && item.archiveCanceledTenants && item.archiveCanceledTenants.length > 0) {
+                        prevCanceledNoticeEmpty = `<div class="text-[11px] text-rose-400 bg-rose-950/30 px-2 py-1 rounded border border-rose-900/40 mt-1"><i class="fa-solid fa-clock-rotate-left"></i> تنبيه: الشقة شاغرة حالياً ويوجد فيها عقود مفسوخة سابقة (اضغط عرض للاطلاع)</div>`;
+                    }
+                    tenantContent = `<span class="text-slate-600 text-xs italic">شقة شاغرة (بدون مستأجر)</span>${prevCanceledNoticeEmpty}`;
+                }
+
+                let checkboxTdHtml = canEdit ? `
+                    <td class="p-4 text-center align-top">
+                        <input type="checkbox" value="${item.id}" onchange="toggleBatchDeleteBar()" class="unit-checkbox w-4 h-4 text-blue-600 rounded bg-slate-900 border-slate-700 cursor-pointer">
+                    </td>
+                ` : '';
+
+                let actionsButtons = `
+                    <div class="flex items-center justify-center gap-2">
+                        <button onclick="openDetailModal(${item.id})" class="bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white px-3.5 py-2 rounded-xl border border-blue-500/30 text-xs font-bold transition"><i class="fa-solid fa-eye"></i> عرض</button>
+                        ${canEdit ? `
+                            <button onclick="editUnit(${item.id})" class="bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white px-3.5 py-2 rounded-xl border border-amber-500/30 text-xs font-bold transition"><i class="fa-solid fa-pen"></i> تعديل</button>
+                            <button onclick="deleteUnit(${item.id})" class="bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white px-3.5 py-2 rounded-xl border border-rose-500/30 text-xs font-bold transition"><i class="fa-solid fa-trash"></i> حذف</button>
+                        ` : ''}
+                    </div>
+                `;
+
+                rowsHtml += `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        ${checkboxTdHtml}
+                        <td class="p-4 whitespace-nowrap align-top">
+                            <div class="inline-block bg-slate-900/90 text-emerald-400 px-4 py-2.5 rounded-xl border border-slate-700/80 font-mono text-xl font-black tracking-wider shadow-inner">
+                                ${highlightText(unitStr, queries.qUnit)}
+                            </div>
+                        </td>
+                        <td class="p-4 text-base align-top">${ownerSectionContent}</td>
+                        <td class="p-4 text-base align-top">${tenantContent}</td>
+                        <td class="p-4 text-center whitespace-nowrap align-top">${actionsButtons}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = rowsHtml;
+            updateGlobalStatistics();
+        }
+
+        function toggleSelectAll(master) {
+            document.querySelectorAll('.unit-checkbox').forEach(cb => cb.checked = master.checked);
+            toggleBatchDeleteBar();
+        }
+
+        function toggleBatchDeleteBar() {
+            if (!hasFullPermission()) return;
+            const checkedBoxes = document.querySelectorAll('.unit-checkbox:checked');
+            const bar = document.getElementById('batchDeleteBar');
+            document.getElementById('selectedCount').innerText = checkedBoxes.length;
+            if (checkedBoxes.length > 0) {
+                bar.classList.remove('hidden');
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        function deleteSelectedUnits() {
+            if (!hasFullPermission()) return;
+            const checkedBoxes = document.querySelectorAll('.unit-checkbox:checked');
+            if (checkedBoxes.length === 0) return;
+
+            if (confirm(`هل أنت متأكد من حذف ${checkedBoxes.length} وحدة سكنية مع كافة بياناتها؟`)) {
+                const idsToDelete = Array.from(checkedBoxes).map(cb => Number(cb.value));
+                unitsData = unitsData.filter(u => !idsToDelete.includes(u.id));
+                saveToStorage();
+                filterData();
+            }
+        }
+
+        function deleteUnit(id) {
+            if (!hasFullPermission()) return;
+            const item = unitsData.find(u => u.id === id);
+            if (item && confirm(`هل أنت متأكد من حذف الوحدة (${item.building}-${item.floor}-${item.apartment})؟`)) {
+                unitsData = unitsData.filter(u => u.id !== id);
+                saveToStorage();
+                filterData();
+            }
+        }
+
+        function archiveCurrentTenant() {
+            if (!hasFullPermission()) return;
+            const tenantName = document.getElementById('addTenant').value.trim();
+            if (!tenantName) {
+                alert("لا يوجد مستأجر حالي ليتم أرشفته!");
+                return;
+            }
+
+            if (confirm(`هل تريد أرشفة العقد المفسوخ للمستأجر الحالي (${tenantName}) ونقله إلى سجل العقود المفسوخة السابقة لهذه الشقة؟`)) {
+                const editId = document.getElementById('editUnitId').value;
+                const archivedRecord = {
+                    tenant: tenantName,
+                    phones: [document.getElementById('addTenantPhone1').value, document.getElementById('addTenantPhone2').value, document.getElementById('addTenantPhone3').value].filter(Boolean),
+                    contractNo: document.getElementById('addContractNo').value,
+                    leaseStart: document.getElementById('addLeaseStart').value,
+                    leaseEnd: document.getElementById('addLeaseEnd').value,
+                    rentIQD: document.getElementById('addRentIQD').value,
+                    rentUSD: document.getElementById('addRentUSD').value,
+                    archiveDate: new Date().toISOString().slice(0, 10)
+                };
+
+                if (editId) {
+                    const item = unitsData.find(u => u.id === Number(editId));
+                    if (item) {
+                        if (!item.archiveCanceledTenants) item.archiveCanceledTenants = [];
+                        item.archiveCanceledTenants.push(archivedRecord);
+                    }
+                }
+
+                document.getElementById('addTenant').value = '';
+                document.getElementById('addContractNo').value = '';
+                document.getElementById('addLeaseStart').value = '';
+                document.getElementById('addLeaseEnd').value = '';
+                document.getElementById('addRentIQD').value = '';
+                document.getElementById('addRentUSD').value = '';
+                document.getElementById('addTenantPhone1').value = '';
+                document.getElementById('addTenantPhone2').value = '';
+                document.getElementById('addTenantPhone3').value = '';
+                document.getElementById('addIsCanceled').checked = false;
+                document.getElementById('tenantResidentsContainer').innerHTML = '';
+                document.getElementById('tenantCarsContainer').innerHTML = '';
+                document.getElementById('tenantAuthContainer').innerHTML = '';
+                addResidentInputRow('tenantResidentsContainer');
+                addCarInputRow('tenantCarsContainer');
+                addAuthInputRow('tenantAuthContainer');
+
+                alert("تمت أرشفة العقد المفسوخ بنجاح! الشقة جاهزة الآن لتأجير جديد.");
+            }
+        }
+
+        function deleteArchivedCanceledTenant(unitId, archiveIndex) {
+            if (!hasFullPermission()) return;
+            const item = unitsData.find(u => u.id === unitId);
+            if (!item || !item.archiveCanceledTenants) return;
+
+            if (confirm("هل أنت متأكد من حذف هذا السجل من الأرشيف؟")) {
+                item.archiveCanceledTenants.splice(archiveIndex, 1);
+                saveToStorage();
+                openDetailModal(unitId);
+                filterData();
+            }
+        }
+
+        function restoreArchivedCanceledTenant(unitId, archiveIndex) {
+            if (!hasFullPermission()) return;
+            const item = unitsData.find(u => u.id === unitId);
+            if (!item || !item.archiveCanceledTenants) return;
+
+            if (confirm("هل تريد استرجاع هذا العقد المفسوخ وجعله المستأجر الحالي للشقة؟")) {
+                const restored = item.archiveCanceledTenants.splice(archiveIndex, 1)[0];
+                
+                if (item.tenant && item.tenant.trim() !== "") {
+                    if (!item.archiveCanceledTenants) item.archiveCanceledTenants = [];
+                    item.archiveCanceledTenants.push({
+                        tenant: item.tenant,
+                        phones: item.tenantPhones || [],
+                        contractNo: item.contractNo,
+                        leaseStart: item.leaseStart,
+                        leaseEnd: item.leaseEnd,
+                        rentIQD: item.rentIQD,
+                        rentUSD: item.rentUSD,
+                        archiveDate: new Date().toISOString().slice(0, 10)
+                    });
+                }
+
+                item.tenant = restored.tenant;
+                item.tenantPhones = restored.phones || ["", "", ""];
+                item.contractNo = restored.contractNo || '';
+                item.leaseStart = restored.leaseStart || '';
+                item.leaseEnd = restored.leaseEnd || '';
+                item.rentIQD = restored.rentIQD || '';
+                item.rentUSD = restored.rentUSD || '';
+                item.isCanceled = false;
+
+                saveToStorage();
+                openDetailModal(unitId);
+                filterData();
+                alert("تم استرجاع العقد بنجاح وأصبح هو العقد الحالي للشقة!");
+            }
+        }
+
+        function openFormModal(editData = null) {
+            if (!hasFullPermission()) return;
+            document.getElementById('editUnitId').value = editData ? editData.id : '';
+            document.getElementById('formModalTitle').innerHTML = editData ? `<i class="fa-solid fa-pen-to-square text-amber-400"></i> تعديل بيانات الوحدة السكنية` : `<i class="fa-solid fa-plus text-emerald-400"></i> إضافة وحدة سكنية جديدة`;
+
+            document.getElementById('addBuilding').value = editData ? editData.building : '';
+            document.getElementById('addFloor').value = editData ? editData.floor : '';
+            document.getElementById('addApartment').value = editData ? editData.apartment : '';
+            document.getElementById('addOwner').value = editData ? editData.owner : '';
+            document.getElementById('addHandoverDate').value = editData ? editData.handoverDate || '' : '';
+            document.getElementById('addOwnerIsResident').checked = editData ? !!editData.ownerIsResident : false;
+            document.getElementById('addOwnerPhone1').value = editData && editData.ownerPhones ? editData.ownerPhones[0] || '' : '';
+            document.getElementById('addOwnerPhone2').value = editData && editData.ownerPhones ? editData.ownerPhones[1] || '' : '';
+            document.getElementById('addOwnerPhone3').value = editData && editData.ownerPhones ? editData.ownerPhones[2] || '' : '';
+            
+            document.getElementById('addTenant').value = editData ? editData.tenant : '';
+            document.getElementById('addTenantIsResident').checked = editData ? !!editData.tenantIsResident : false;
+            document.getElementById('addIsCanceled').checked = editData ? !!editData.isCanceled : false;
+            document.getElementById('addTenantPhone1').value = editData && editData.tenantPhones ? editData.tenantPhones[0] || '' : '';
+            document.getElementById('addTenantPhone2').value = editData && editData.tenantPhones ? editData.tenantPhones[1] || '' : '';
+            document.getElementById('addTenantPhone3').value = editData && editData.tenantPhones ? editData.tenantPhones[2] || '' : '';
+            
+            document.getElementById('addContractNo').value = editData ? editData.contractNo || '' : '';
+            document.getElementById('addLeaseStart').value = editData ? editData.leaseStart || '' : '';
+            document.getElementById('addLeaseEnd').value = editData ? editData.leaseEnd || '' : '';
+            document.getElementById('addRentIQD').value = editData ? editData.rentIQD || '' : '';
+            document.getElementById('addRentUSD').value = editData ? editData.rentUSD || '' : '';
+
+            document.getElementById('addNotes').value = editData ? editData.notes : '';
+
+            document.getElementById('ownerResidentsContainer').innerHTML = '';
+            document.getElementById('ownerCarsContainer').innerHTML = '';
+            document.getElementById('ownerAuthContainer').innerHTML = '';
+            document.getElementById('tenantResidentsContainer').innerHTML = '';
+            document.getElementById('tenantCarsContainer').innerHTML = '';
+            document.getElementById('tenantAuthContainer').innerHTML = '';
+
+            if (editData) {
+                (editData.ownerResidents || []).forEach(r => addResidentInputRow('ownerResidentsContainer', r));
+                (editData.ownerCars || []).forEach(c => addCarInputRow('ownerCarsContainer', c));
+                (editData.ownerAuth || []).forEach(a => addAuthInputRow('ownerAuthContainer', a));
+                (editData.tenantResidents || []).forEach(r => addResidentInputRow('tenantResidentsContainer', r));
+                (editData.tenantCars || []).forEach(c => addCarInputRow('tenantCarsContainer', c));
+                (editData.tenantAuth || []).forEach(a => addAuthInputRow('tenantAuthContainer', a));
+            } else {
+                addResidentInputRow('ownerResidentsContainer');
+                addCarInputRow('ownerCarsContainer');
+                addAuthInputRow('ownerAuthContainer');
+                addResidentInputRow('tenantResidentsContainer');
+                addCarInputRow('tenantCarsContainer');
+                addAuthInputRow('tenantAuthContainer');
+            }
+            document.getElementById('formModal').classList.remove('hidden');
+        }
+
+        function saveUnit(e) {
+            e.preventDefault();
+            if (!hasFullPermission()) return;
+            const editId = document.getElementById('editUnitId').value;
+
+            let existingArchive = [];
+            if (editId) {
+                const oldItem = unitsData.find(u => u.id === Number(editId));
+                if (oldItem && oldItem.archiveCanceledTenants) {
+                    existingArchive = oldItem.archiveCanceledTenants;
+                }
+            }
+
+            const unitPayload = {
+                id: editId ? Number(editId) : Date.now(),
+                building: document.getElementById('addBuilding').value,
+                floor: document.getElementById('addFloor').value,
+                apartment: document.getElementById('addApartment').value,
+                owner: document.getElementById('addOwner').value,
+                handoverDate: document.getElementById('addHandoverDate').value,
+                ownerIsResident: document.getElementById('addOwnerIsResident').checked,
+                ownerPhones: [document.getElementById('addOwnerPhone1').value, document.getElementById('addOwnerPhone2').value, document.getElementById('addOwnerPhone3').value],
+                ownerResidents: Array.from(document.querySelectorAll('#ownerResidentsContainer > div')).map(row => ({
+                    name: row.querySelector('.res-name').value, relation: row.querySelector('.res-relation').value, phone: row.querySelector('.res-phone').value, isResident: row.querySelector('.res-is-resident').checked
+                })).filter(r => r.name),
+                ownerCars: Array.from(document.querySelectorAll('#ownerCarsContainer > div')).map(row => ({
+                    type: row.querySelector('.car-type').value, color: row.querySelector('.car-color').value, number: row.querySelector('.car-num').value
+                })).filter(c => c.type),
+                ownerAuth: Array.from(document.querySelectorAll('#ownerAuthContainer > div')).map(row => ({
+                    name: row.querySelector('.auth-name').value, type: row.querySelector('.auth-type').value, startDate: row.querySelector('.auth-start-date').value, expiryDate: row.querySelector('.auth-expiry-date').value, carType: row.querySelector('.auth-car-type').value, carColor: row.querySelector('.auth-car-color').value, carNum: row.querySelector('.auth-car-num').value
+                })).filter(a => a.name),
+                tenant: document.getElementById('addTenant').value.trim(),
+                tenantIsResident: document.getElementById('addTenantIsResident').checked,
+                isCanceled: document.getElementById('addIsCanceled').checked,
+                tenantPhones: [document.getElementById('addTenantPhone1').value, document.getElementById('addTenantPhone2').value, document.getElementById('addTenantPhone3').value],
+                contractNo: document.getElementById('addContractNo').value,
+                leaseStart: document.getElementById('addLeaseStart').value,
+                leaseEnd: document.getElementById('addLeaseEnd').value,
+                rentIQD: document.getElementById('addRentIQD').value,
+                rentUSD: document.getElementById('addRentUSD').value,
+                tenantResidents: Array.from(document.querySelectorAll('#tenantResidentsContainer > div')).map(row => ({
+                    name: row.querySelector('.res-name').value, relation: row.querySelector('.res-relation').value, phone: row.querySelector('.res-phone').value, isResident: row.querySelector('.res-is-resident').checked
+                })).filter(r => r.name),
+                tenantCars: Array.from(document.querySelectorAll('#tenantCarsContainer > div')).map(row => ({
+                    type: row.querySelector('.car-type').value, color: row.querySelector('.car-color').value, number: row.querySelector('.car-num').value
+                })).filter(c => c.type),
+                tenantAuth: Array.from(document.querySelectorAll('#tenantAuthContainer > div')).map(row => ({
+                    name: row.querySelector('.auth-name').value, type: row.querySelector('.auth-type').value, startDate: row.querySelector('.auth-start-date').value, expiryDate: row.querySelector('.auth-expiry-date').value, carType: row.querySelector('.auth-car-type').value, carColor: row.querySelector('.auth-car-color').value, carNum: row.querySelector('.auth-car-num').value
+                })).filter(a => a.name),
+                archiveCanceledTenants: existingArchive,
+                notes: document.getElementById('addNotes').value || "لا توجد ملاحظات."
+            };
+
+            if (editId) {
+                const idx = unitsData.findIndex(u => u.id === Number(editId));
+                if (idx !== -1) unitsData[idx] = unitPayload;
+            } else {
+                unitsData.unshift(unitPayload);
+            }
+
+            saveToStorage();
+            closeModal('formModal');
+            filterData();
+            e.target.reset();
+        }
+
+        function editUnit(id) {
+            if (!hasFullPermission()) return;
+            const item = unitsData.find(u => u.id === id);
+            if (item) openFormModal(item);
+        }
+
+        function openDetailModal(id) {
+            const item = unitsData.find(u => u.id === id);
+            if (!item) return;
+
+            let ownerAuthDetails = '';
+            if (currentRole !== 'services' && currentRole !== 'maintenance') {
+                ownerAuthDetails = (item.ownerAuth || []).map(a => `<div class="text-sm text-blue-300 bg-blue-950/40 p-2.5 rounded-lg border border-blue-800/40 mt-1">اسم المخول: <b>${a.name}</b> | نوعه: ${a.type || 'عام'} | من: ${formatDateToRightLeft(a.startDate) || '-'} | إلى: ${formatDateToRightLeft(a.expiryDate) || '-'} | سيارته: ${a.carType || ''} [${a.carNum || ''}]</div>`).join('') || '<p class="text-xs text-slate-500">لا يوجد مخولين</p>';
+            }
+
+            const expired = isContractExpired(item.leaseEnd);
+            let contractStatusText = item.isCanceled ? '<span class="text-rose-400 font-bold">[عقد مفسوخ]</span>' : (expired ? '<span class="text-amber-400 font-bold">[عقد منتهي التاريخ]</span>' : '<span class="text-emerald-400 font-bold">[عقد ساري]</span>');
+
+            let contractNoLine = item.contractNo ? `<div><b>رقم العقد:</b> <span class="font-mono text-white font-bold">${item.contractNo}</span></div>` : '';
+            let rentLine = "";
+            if (currentRole === 'admin' || currentRole === 'services') {
+                rentLine = `<div><b>الإيجار الشهري بالدينار:</b> ${item.rentIQD || '-'} د.ع</div><div><b>الإيجار الشهري بالدولار:</b> ${item.rentUSD || '-'} $</div>`;
+            }
+
+            let tenantDetails = '';
+            if (currentRole !== 'viewer' && currentRole !== 'maintenance') {
+                tenantDetails = item.tenant && item.tenant.trim() !== "" ? `
+                    <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                        <h4 class="font-bold text-emerald-400 text-base border-b border-slate-700/50 pb-2">المستأجر الحالي: ${item.tenant} ${contractStatusText}</h4>
+                        <p class="text-xs text-slate-300">هواتف المستأجر: ${(item.tenantPhones || []).filter(Boolean).join(' - ') || 'لا توجد'}</p>
+                        <div class="bg-slate-900/60 p-3 rounded-lg border border-emerald-800/40 text-xs text-emerald-300 space-y-1">
+                            ${contractNoLine}
+                            <div><b>تاريخ بدء العقد:</b> ${formatDateToRightLeft(item.leaseStart) || '-'}</div>
+                            <div><b>تاريخ انتهاء العقد:</b> ${formatDateToRightLeft(item.leaseEnd) || '-'}</div>
+                            ${rentLine}
+                        </div>
+                    </div>
+                ` : `<div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/60"><p class="text-xs text-slate-500 italic">الشقة شاغرة حالياً (لا يوجد مستأجر حالي)</p></div>`;
+            } else if (currentRole === 'maintenance') {
+                tenantDetails = item.tenant && item.tenant.trim() !== "" ? `
+                    <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                        <h4 class="font-bold text-emerald-400 text-base border-b border-slate-700/50 pb-2">المستأجر الحالي: ${item.tenant}</h4>
+                        <p class="text-xs text-slate-300">هواتف المستأجر: ${(item.tenantPhones || []).filter(Boolean).join(' - ') || 'لا توجد'}</p>
+                    </div>
+                ` : `<div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/60"><p class="text-xs text-slate-500 italic">الشقة شاغرة حالياً (لا يوجد مستأجر حالي)</p></div>`;
+            } else {
+                tenantDetails = item.tenant && item.tenant.trim() !== "" ? `
+                    <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                        <h4 class="font-bold text-emerald-400 text-base border-b border-slate-700/50 pb-2">المستأجر الحالي: ${item.tenant}</h4>
+                        <p class="text-xs text-slate-300">هواتف المستأجر: ${(item.tenantPhones || []).filter(Boolean).join(' - ') || 'لا توجد'}</p>
+                    </div>
+                ` : `<div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/60"><p class="text-xs text-slate-500 italic">الشقة شاغرة حالياً (لا يوجد مستأجر حالي)</p></div>`;
+            }
+
+            let archiveSection = '';
+            if (currentRole !== 'viewer' && currentRole !== 'maintenance' && item.archiveCanceledTenants && item.archiveCanceledTenants.length > 0) {
+                let archiveItemsHtml = item.archiveCanceledTenants.map((ar, idx) => `
+                    <div class="bg-slate-900/90 p-3 rounded-lg border border-rose-900/60 text-xs space-y-1.5">
+                        <div class="flex justify-between items-center text-rose-300 font-bold">
+                            <span>#${idx + 1} - مستأجر (عقد مفسوخ سابق): ${ar.tenant}</span>
+                            <span class="text-[10px] text-slate-400">تاريخ الأرشفة: ${formatDateToRightLeft(ar.archiveDate) || '-'}</span>
+                        </div>
+                        <div><b>رقم العقد:</b> <span class="font-mono text-white">${ar.contractNo || '-'}</span> | <b>الهواتف:</b> ${(ar.phones || []).join(' - ') || 'لا توجد'}</div>
+                        <div><b>فترة العقد المفسوخ:</b> من (${formatDateToRightLeft(ar.leaseStart) || '-'}) إلى (${formatDateToRightLeft(ar.leaseEnd) || '-'})</div>
+                        <div><b>قيمة الإيجار:</b> ${ar.rentIQD || '-'} د.ع / ${ar.rentUSD || '-'} $</div>
+                        
+                        ${hasFullPermission() ? `
+                            <div class="flex gap-2 pt-2 border-t border-slate-800">
+                                <button onclick="restoreArchivedCanceledTenant(${item.id}, ${idx})" class="bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white px-2.5 py-1 rounded text-[11px] font-bold transition"><i class="fa-solid fa-rotate-left ml-1"></i> استرجاع هذا العقد (إلغاء الفسخ)</button>
+                                <button onclick="deleteArchivedCanceledTenant(${item.id}, ${idx})" class="bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white px-2.5 py-1 rounded text-[11px] font-bold transition"><i class="fa-solid fa-trash ml-1"></i> حذف من الأرشيف</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+
+                archiveSection = `
+                    <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                        <h4 class="font-bold text-rose-400 text-base border-b border-slate-700/50 pb-2"><i class="fa-solid fa-ban ml-1"></i> أرشيف العقود المفسوخة السابقة لهذه الشقة (${item.archiveCanceledTenants.length})</h4>
+                        <div class="space-y-2">${archiveItemsHtml}</div>
+                    </div>
+                `;
+            }
+
+            let maintDetail = getMaintenanceStatusInfo(item.handoverDate);
+
+            document.getElementById('modalContent').innerHTML = `
+                <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 text-base font-mono text-emerald-400">رمز الوحدة السكنية: ${item.building}-${item.floor}-${item.apartment}</div>
+                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                    <h4 class="font-bold text-blue-400 text-base border-b border-slate-700/50 pb-2">مالك الوحدة: ${item.owner}</h4>
+                    <p class="text-xs text-slate-300">الهواتف: ${(item.ownerPhones || []).filter(Boolean).join(' - ') || 'لا توجد'}</p>
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700 space-y-1 text-xs">
+                        <div>تاريخ استلام الوحدة: <span class="text-sky-300 font-bold font-mono">${formatDateToRightLeft(item.handoverDate)}</span></div>
+                        <div class="${maintDetail.color} font-bold">${maintDetail.mainText}</div>
+                        <div class="text-slate-300 text-[11px]">${maintDetail.subText}</div>
+                    </div>
+                    ${currentRole !== 'services' && currentRole !== 'maintenance' ? `<div><p class="text-xs text-slate-400 mb-1 font-semibold">المخولون:</p>${ownerAuthDetails}</div>` : ''}
+                </div>
+                ${tenantDetails}
+                ${archiveSection}
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function addResidentInputRow(containerId, data = {name:'', relation:'', phone:'', isResident: false}) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = "grid grid-cols-1 md:grid-cols-4 gap-2 bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/50 relative items-center";
+            div.innerHTML = `
+                <input type="text" placeholder="اسم الساكن *" value="${data.name}" class="res-name bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <input type="text" placeholder="صلة القرابة" value="${data.relation}" class="res-relation bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <input type="text" placeholder="رقم الهاتف" value="${data.phone}" class="res-phone bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" ${data.isResident ? 'checked' : ''} class="res-is-resident w-4 h-4 text-sky-600 rounded"><span class="text-[11px] text-sky-300">مقيم</span></label>
+                    <button type="button" onclick="this.closest('div.grid').remove()" class="text-rose-400 px-2"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function addCarInputRow(containerId, data = {type:'', color:'', number:''}) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = "grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-900/60 p-2 rounded-lg border border-slate-700/50 relative";
+            div.innerHTML = `
+                <input type="text" placeholder="نوع السيارة" value="${data.type}" class="car-type bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <input type="text" placeholder="لون السيارة" value="${data.color}" class="car-color bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <div class="flex items-center gap-1">
+                    <input type="text" placeholder="رقم اللوحة" value="${data.number}" class="car-num w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                    <button type="button" onclick="this.closest('div.grid').remove()" class="text-rose-400 px-2"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function addAuthInputRow(containerId, data = {name:'', type:'', startDate:'', expiryDate:'', carType:'', carColor:'', carNum:''}) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = "bg-slate-900/80 p-3 rounded-lg border border-slate-700/60 space-y-2 relative";
+            div.innerHTML = `
+                <div class="flex justify-between items-center"><span class="text-[11px] text-blue-400 font-semibold">بيانات المخول:</span><button type="button" onclick="this.closest('div.bg-slate-900\\/80').remove()" class="text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <input type="text" placeholder="اسم المخول *" value="${data.name}" class="auth-name bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                    <input type="text" placeholder="نوع التخويل" value="${data.type}" class="auth-type bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <input type="date" value="${data.startDate || ''}" class="auth-start-date w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                    <input type="date" value="${data.expiryDate || ''}" class="auth-expiry-date w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <input type="text" placeholder="نوع السيارة" value="${data.carType}" class="auth-car-type bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                    <input type="text" placeholder="لونها" value="${data.carColor}" class="auth-car-color bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                    <input type="text" placeholder="رقم اللوحة" value="${data.carNum}" class="auth-car-num bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function exportToExcelFull() {
+            if (!unitsData || unitsData.length === 0) {
+                alert("لا توجد بيانات لتصديرها!");
+                return;
+            }
+
+            const exportList = unitsData.map(u => ({
+                "العمارة": u.building,
+                "الطابق": u.floor,
+                "الشقة": u.apartment,
+                "المالك": u.owner,
+                "تاريخ الاستلام": formatDateToRightLeft(u.handoverDate),
+                "هواتف المالك": (u.ownerPhones || []).filter(Boolean).join(' - '),
+                "المستأجر الحالي": u.tenant || "شاغرة",
+                "هواتف المستأجر": (u.tenantPhones || []).filter(Boolean).join(' - '),
+                "رقم العقد": u.contractNo || "",
+                "تاريخ البدء": formatDateToRightLeft(u.leaseStart),
+                "تاريخ الانتهاء": formatDateToRightLeft(u.leaseEnd),
+                "الإيجار د.ع": u.rentIQD || "",
+                "الإيجار $": u.rentUSD || "",
+                "حالة العقد": u.isCanceled ? "مفسوخ" : "ساري",
+                "الملاحظات": u.notes || ""
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportList);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "الساكنون والوحدات");
+            XLSX.writeFile(workbook, `RoyalCity_Residents_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
+        function exportBackup() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(unitsData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            const dateStr = new Date().toISOString().slice(0, 10);
+            downloadAnchor.setAttribute("download", `RoyalCity_Backup_${dateStr}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function triggerJsonImport() {
+            document.getElementById('jsonFileInput').click();
+        }
+
+        function importJsonBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        if (confirm(`هل أنت متأكد من استرجاع النسخة الاحتياطية؟ سيتم استبدال البيانات الحالية بـ ${imported.length} وحدة.`)) {
+                            unitsData = imported;
+                            saveToStorage();
+                            filterData();
+                            alert("تم استرجاع النسخة الاحتياطية بنجاح!");
+                        }
+                    } else {
+                        alert("ملف النسخة الاحتياطية غير صالح!");
+                    }
+                } catch (err) {
+                    alert("حدث خطأ أثناء قراءة ملف الـ JSON.");
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadExcelTemplate() {
+            const sampleData = [{ building: "R1", floor: "1", apartment: "5", owner: "أحمد عبد الله", handoverDate: "2025-01-01", ownerPhones: "07701112233", tenant: "حسين علي" }];
+            const worksheet = XLSX.utils.json_to_sheet(sampleData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "نموذج الوحدات");
+            XLSX.writeFile(workbook, "نموذج_الرويال_ستي.xlsx");
+        }
+
+        function triggerExcelImport() { 
+            document.getElementById('excelFileInput').click(); 
+        }
+
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (json && json.length > 0) {
+                        json.forEach(row => {
+                            const newUnit = {
+                                id: Date.now() + Math.random(),
+                                building: String(row.building || row['اسم/رقم العمارة'] || 'R1'),
+                                floor: String(row.floor || row['رقم الطابق'] || '1'),
+                                apartment: String(row.apartment || row['رقم الشقة'] || '1'),
+                                owner: String(row.owner || row['اسم المالك'] || 'بدون اسم'),
+                                handoverDate: String(row.handoverDate || row['تاريخ الاستلام'] || ''),
+                                ownerIsResident: true,
+                                ownerPhones: [String(row.ownerPhones || row['هاتف المالك'] || '')],
+                                ownerResidents: [],
+                                ownerCars: [],
+                                ownerAuth: [],
+                                tenant: String(row.tenant || row['اسم المستأجر'] || ''),
+                                tenantIsResident: false,
+                                isCanceled: false,
+                                tenantPhones: [],
+                                contractNo: '',
+                                leaseStart: '',
+                                leaseEnd: '',
+                                rentIQD: '',
+                                rentUSD: '',
+                                tenantResidents: [],
+                                tenantCars: [],
+                                tenantAuth: [],
+                                archiveCanceledTenants: [],
+                                notes: "مستورد من إكسل"
+                            };
+                            unitsData.unshift(newUnit);
+                        });
+                        saveToStorage();
+                        filterData();
+                        alert(`تم استيراد ${json.length} وحدة بنجاح من ملف الإكسل!`);
+                    }
+                } catch (err) {
+                    alert("حدث خطأ أثناء قراءة ملف الإكسل.");
+                }
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function trySetAdminRole() { document.getElementById('loginModal').classList.remove('hidden'); }
+        function verifyAdminPassword(e) {
+            e.preventDefault();
+            const passAdmin = systemConfig.passwords?.admin || '8815291';
+            if(document.getElementById('adminPasswordInput').value === passAdmin) {
+                closeModal('loginModal');
+                switchRole('admin', 'المدير محمد العبيدي');
+            } else { document.getElementById('passwordError').classList.remove('hidden'); }
+        }
+
+        function trySetMaintenanceRole() { document.getElementById('maintenanceLoginModal').classList.remove('hidden'); }
+        function verifyMaintenancePassword(e) {
+            e.preventDefault();
+            const passMaint = systemConfig.passwords?.maintenance || '321987';
+            if(document.getElementById('maintenancePasswordInput').value === passMaint) {
+                closeModal('maintenanceLoginModal');
+                switchRole('maintenance', 'قسم الصيانة');
+            } else { document.getElementById('maintenancePasswordError').classList.remove('hidden'); }
+        }
+
+        function trySetServicesRole() { document.getElementById('servicesLoginModal').classList.remove('hidden'); }
+        function verifyServicesPassword(e) {
+            e.preventDefault();
+            const passServ = systemConfig.passwords?.services || '123789';
+            if(document.getElementById('servicesPasswordInput').value === passServ) {
+                closeModal('servicesLoginModal');
+                switchRole('services', 'قسم الخدمات');
+            } else { document.getElementById('servicesPasswordError').classList.remove('hidden'); }
+        }
+
+        function trySetViewerRole() { document.getElementById('viewerLoginModal').classList.remove('hidden'); }
+        function verifyViewerPassword(e) {
+            e.preventDefault();
+            const sKey = document.getElementById('viewerShiftSelect').value;
+            const passwords = systemConfig.passwords || { morning: '246810', evening: '13579', night: '258456' };
+            const targetPass = passwords[sKey];
+            const shiftObj = SHIFT_PASSWORDS[sKey];
+            if(document.getElementById('viewerPasswordInput').value === targetPass) {
+                closeModal('viewerLoginModal');
+                switchRole('viewer', shiftObj ? shiftObj.name : 'مشاهد');
+            } else { document.getElementById('viewerPasswordError').classList.remove('hidden'); }
+        }
+    </script>
+</body>
+</html>
